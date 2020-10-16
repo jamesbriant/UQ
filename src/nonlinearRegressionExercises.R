@@ -44,6 +44,7 @@ legend('bottomright', legend = c("data", "true solution to ODE", "NLS fitted cur
 
 #########--------------------------------------------------------------
 # Exercise 2
+# Part 1
 
 library(deSolve)
 
@@ -56,6 +57,8 @@ rate <- c(14.58342, 24.74123, 31.34551, 72.96985, 77.50099, 96.08794, 96.96624, 
 data <- data.frame(conc, rate)
 
 nls.fit <- nls(rate ~ f(conc, theta1, theta2), data=data, start=list(theta1=100, theta2=15))
+coef(nls.fit)
+vcov(nls.fit)
 
 nls.estimate = predict(nls.fit)
 
@@ -63,6 +66,44 @@ plot(conc, rate)
 lines(conc, rate)
 lines(conc, nls.estimate, col="red")
 legend('bottomright', legend = c("data", "NLS fitted curve"), col = c("black", "red"), pt.lwd=1, lwd=1, bty="n", text.font=.5,border=F)
+
+
+
+#############
+# Part 2
+
+conc.inv <- 1/conc
+rate.inv <- 1/rate
+data.inv <- data.frame(conc.inv, rate.inv)
+
+linear.fit <- lm(rate.inv ~ conc.inv, data=data.inv)
+beta1 <- as.numeric(coef(linear.fit)[1])
+beta2 <- as.numeric(coef(linear.fit)[2])
+
+theta1.start <- 1/beta1
+theta2.start <- beta2/beta1
+
+nls.fit <- nls(rate ~ f(conc, theta1, theta2), data=data, start=list(theta1=theta1.start, theta2=theta2.start))
+coef(nls.fit)
+vcov(nls.fit)
+
+nls.estimate = predict(nls.fit)
+
+plot(conc, rate)
+lines(conc, rate)
+lines(conc, nls.estimate, col="red")
+legend('bottomright', legend = c("data", "NLS fitted curve"), col = c("black", "red"), pt.lwd=1, lwd=1, bty="n", text.font=.5,border=F)
+
+
+################
+# Part 3
+
+
+
+
+
+
+
 
 
 
