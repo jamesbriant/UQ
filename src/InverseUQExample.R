@@ -1,3 +1,6 @@
+#########################################################################
+# Karthik's code from the lecture. See nonlinear regression section
+
 library(deSolve)
 
 logistic=function(t, y, params){
@@ -46,6 +49,41 @@ lines(noisy.growth ~ day, data=sim.data)
 lines(growth ~ day, data=sim.data, col="blue")
 lines(sim.data$day, nls.estimate, col="red")
 legend('bottomright', legend = c("data", "ODE solution", "NLS fitted curve"), col = c("black", "blue", "red"), pt.lwd=1, lwd=1, bty="n", text.font=.5,border=F)
+
+
+
+
+c.hat=coef(nls.fit)[1]
+r.hat=coef(nls.fit)[2]
+sd.chat=sqrt(vcov(nls.fit)[1,1])
+sd.rhat=sqrt(vcov(nls.fit)[2,2])
+
+set.seed(54321)
+
+### sample 10 values of c and r.
+c.sample=rnorm(10,mean=c.hat,sd=sd.chat)
+r.sample=rnorm(10,mean=r.hat,sd=sd.rhat)
+
+sols=matrix(0,nrow=10,ncol=10)
+for(i in 1:10){
+  sols[,i]=rk(y_init,tt,logistic,c(c=c.sample[i],r=r.sample[i]))[,2]
+}
+
+matplot(sols,col="orange",type="l",ylim=c(1,115),xlab="day",ylab="growth")
+points(noisy.growth~day,data=sim.data)
+lines(growth~day,data=sim.data,col="blue")
+lines(sim.data$day,nls.estimate,col="red")
+
+
+
+
+
+
+
+
+
+
+
 
 
 
