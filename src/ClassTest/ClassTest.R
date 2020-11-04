@@ -55,6 +55,8 @@ calcSigma <- function(X1, X2){
   return(Sigma)
 }
 
+########## RUN THIS BLOCK BELOW FOR THE FIRST PLOT ####################
+
 # calculate the variance matrices required for plotting
 alpha.plot <- seq(5, 10, length=50)
 k.aa <- calcSigma(D$alpha, D$alpha)
@@ -79,6 +81,11 @@ lines(alpha.plot, y.up, col="dark grey", lty=2)
 # ignore the following warnings
 legend(8, 6, legend=c("best estimate", "99% confidence band", "data points"), col=c("black", "grey", "red"), lty=c(1, 2, 0), pch=c(26, 26, 16))
 
+####### END OF FIRST BLOCK ###########
+
+
+
+########## RUN THIS BLOCK BELOW FOR THE SECOND PLOT ####################
 
 # Now calculate the distribution of g(alpha=7.5)
 
@@ -93,9 +100,9 @@ k.apap <- calcSigma(alpha.plot, alpha.plot)
 m.star <- k.apa %*% solve(k.aa + 0.15*diag(1, ncol(k.aa))) %*% D$zeta
 k.star <- k.apap - k.apa %*% solve(k.aa + 0.15*diag(1, ncol(k.aa))) %*% k.aap
 
-hist(rnorm(1000, m.star, k.star), xlab="Prey Population - g(alpha=7.5)", main="Distribution of Prey Population drawn from 1000 samples of g(7.5)=N(2.10, 0.234)")
+hist(rnorm(1000, m.star, k.star), breaks=seq(1, 3.1, 0.1), xlab="Prey Population - g(alpha=7.5)", main="Distribution of Prey Population drawn from 1000 samples of g(7.5)=N(2.10, 0.234)")
 
-
+####### END OF SECOND BLOCK ###########
 
 
 # The first plot shows the best estimate of the prey population at time 20 for different values of alpha on [5,10].
