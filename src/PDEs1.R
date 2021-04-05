@@ -263,11 +263,12 @@ fig
 source("include/GPFunctions2D.R")
 library(plotly)
 
-I <- 60
-M <- I^2
+I <- 35
+J <- 25
+M <- I*J
 
 x <- seq(0, 1, length=I)
-y <- x
+y <- seq(0, 1, length=J)
 z <- GenerateGP2D(4, M=M, I=I)
 
 
@@ -279,8 +280,8 @@ persp(x, y, z[[4]])
 par(mfrow=c(1,1))
 
 
-#fig <- plot_ly(x=x, y=y, z=z) %>% add_surface()
-#fig
+fig <- plot_ly(x=x, y=y, z=z[[1]]) %>% add_surface()
+fig
 
 
 
@@ -291,8 +292,9 @@ par(mfrow=c(1,1))
 
 
 
-
-
+C <- GenerateC(M, I)
+eigen.sol <- SolveEigenProblem(C, 30)
+eigen.sol$values
 
 
 

@@ -128,7 +128,7 @@ SolveEigenProblem <- function(C, k=50){
          )
 }
 
-GenerateGP2D <- function(N=1, k=50, M=1600, I=40, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1){
+GenerateGP2D <- function(N=1, k=50, M=FALSE, I=FALSE, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1){
   # N:      number of 2D GP samples to draw
   # k:      Summation upper limit
   # M:      Total number of evaluated points, I*J
@@ -139,6 +139,26 @@ GenerateGP2D <- function(N=1, k=50, M=1600, I=40, sigma2=1, nu=0.5, tau=1, Lx=1,
   # Lx:     x-axis domain, [0, Lx]
   # Ly:     y-axis domain, [0, Ly]
   
+  ###########
+  # CHECK INPUTS
+  ###########
+  
+  if(M == FALSE && I == FALSE){
+    print("ERROR: At least one of M or I must be set.")
+    return(1)
+  }else if(M == FALSE){
+    M <- I^2
+  }else if(I == FALSE){
+    I <- sqrt(M)
+  }else if(M %% I != 0){
+    print("ERROR: I must divide M exactly.")
+    return(2)
+  }
+  
+  ###########
+  # IMPLEMENTATION
+  ###########
+  
   C <- GenerateC(M, I)
   eigen.sol <- SolveEigenProblem(C, k)
   
@@ -148,12 +168,14 @@ GenerateGP2D <- function(N=1, k=50, M=1600, I=40, sigma2=1, nu=0.5, tau=1, Lx=1,
   
   for(n in 1:N){
     # initiate the nth sample
-    GPsamples[[n]] <- matrix(0, ncol=I, nrow=J)
+    GPsamples[[n]] <- matrix(0, nrow=I, ncol=J)
     
     for(i in 1:eigen.sol$n){
       a <- sqrt(eigen.sol$values[i])*eigen.sol$funcs[, i]*rnorm(1, 0, 1)
-      GPsamples[[n]] <- GPsamples[[n]] + matrix(a, byrow=FALSE, ncol=I, nrow=J)
+      GPsamples[[n]] <- GPsamples[[n]] + matrix(a, byrow=FALSE, nrow=I, ncol=J)
     }
+    
+    #GPsamples[[n]] <- t(GPsamples[[n]])
   }
   
   return(GPsamples)
