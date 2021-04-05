@@ -263,19 +263,24 @@ fig
 source("include/GPFunctions2D.R")
 library(plotly)
 
-I <- 100
+I <- 60
 M <- I^2
 
-x <- seq(0, 1, length=40)
+x <- seq(0, 1, length=I)
 y <- x
-z <- GenerateGP2D(1, M=M, I=I)[[1]]
-
-fig <- plot_ly(x=x, y=y, z=z) %>% add_surface()
-fig
+z <- GenerateGP2D(4, M=M, I=I)
 
 
+par(mfrow=c(2,2))
+persp(x, y, z[[1]])
+persp(x, y, z[[2]])
+persp(x, y, z[[3]])
+persp(x, y, z[[4]])
+par(mfrow=c(1,1))
 
 
+#fig <- plot_ly(x=x, y=y, z=z) %>% add_surface()
+#fig
 
 
 
