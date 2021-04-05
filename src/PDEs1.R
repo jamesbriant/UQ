@@ -263,13 +263,20 @@ fig
 source("include/GPFunctions2D.R")
 library(plotly)
 
-I <- 35
-J <- 25
+I <- 50
+J <- 50
 M <- I*J
 
 x <- seq(0, 1, length=I)
 y <- seq(0, 1, length=J)
+
+tic2 <- Sys.time()
+z <- GenerateGP2D(1, M=M, I=I)
+Sys.time() - tic2
+
+tic2 <- Sys.time()
 z <- GenerateGP2D(4, M=M, I=I)
+Sys.time() - tic2
 
 
 par(mfrow=c(2,2))
@@ -285,16 +292,6 @@ fig
 
 
 
-
-
-
-
-
-
-
-C <- GenerateC(M, I)
-eigen.sol <- SolveEigenProblem(C, 30)
-eigen.sol$values
 
 
 
