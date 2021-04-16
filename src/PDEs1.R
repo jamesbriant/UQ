@@ -197,7 +197,7 @@ beta.n.m <- function(n, m, Lx=1, Ly=1){
   return(((n/Lx)^2 + (m/Ly)^2)*pi^2)
 }
 
-g(n, m, k, l, Lx=1, Ly=1){
+g <- function(n, m, k, l, Lx=1, Ly=1){
   a <- 16 * Lx^2 * Ly^2
   b <- pi^4 *n*m*k*l
   
@@ -291,7 +291,109 @@ GP.samples <- GenerateSamples(N, KLDecomp1, I=I, J=J)#, f.base=f.base)
 
 z <- GPMC2D.mean(GP.samples)
 
-#fields::image.plot(x, y, z)
+#fields::image.plot(x, y, z$mean)
+
+fig <- plot_ly(x=x, y=y, z=z$mean) %>% add_surface()
+fig
+
+
+
+
+
+
+
+
+###########################
+
+GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
+  # GPSamples:  list of GP samples (must include a f.base if required)
+  # N:          x-direction summation limit
+  # M:          y-direction summation limit
+  # Lx:         x-axis domain, [0, Lx]
+  # Ly:         y-axis domain, [0, Ly]
+  
+  no.samples <- length(GPSamples)
+  #GP.mean <- Reduce('+', GPSamples)/no.samples
+  
+  I <- dim(GPSamples[[1]])[1]
+  J <- dim(GPSamples[[1]])[2]
+  
+  x <- seq(0, Lx, length=I)
+  y <- seq(0, Ly, length=J)
+  p.f <- lapply(1:no.samples, function(i) matrix(0, nrow=I, ncol=J))
+  p.f.mean <- matrix(0, nrow=I, ncol=J)
+  p.f.variance <- matrix(0, nrow=I, ncol=J)
+  
+  for(n in 1:N){
+    for(m in 1:M){
+      # calculate the spectral coefficients
+      #f.n.m <- MonteCarlo2D(user.func=function(x, y) StepFunction2D(x, y)*v.n.m(n, m, x, y))$mean
+      # f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+      #   interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
+      #     v.n.m(n, m, x, y)
+      # })$mean
+      
+      # evaluate the mean terms
+      # for(i in 1:length(x)){
+      #   p.f.mean[i, ] <- p.f.mean[i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
+      # }
+      
+      # evaluate the variance terms
+      # if(n*m %% 2 == 1){
+      #   odds <- seq(1, N, by=2)
+      #   for(k in odds){
+      #     p.f.variance <- p.f.variance + v.n.m(n,m,x)
+      #   }
+      # }
+      
+      
+      for(k in 1:no.samples){
+        f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+          interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GPSamples[[k]]), x, y, method="linear")*
+            v.n.m(n, m, x, y)
+        }, N=2000)$mean
+        
+        # evaluate the terms
+        beta.n.m.evaluated <- beta.n.m(n, m, Lx=Lx, Ly=Ly)
+        for(i in 1:length(x)){
+          p.f[[k]][i, ] <- p.f[[k]][i, ] + f.n.m*v.n.m(n, m, x[i], y, Lx=Lx, Ly=Ly)/beta.n.m.evaluated
+        }
+      }
+      
+      p.f.mean <- Reduce('+', p.f)/no.samples
+      
+      # CALCUATE THE VARIANCE HERE
+      
+      
+      
+    }
+  }
+  
+  # sum the solutions divide to get the mean
+  return(list("p.f"=p.f,
+              "mean"=p.f.mean,
+              "variance"=sigma2*p.f.variance)
+  )
+}
+
+
+
+I <- 35 # Number of points in x-direction
+J <- I  # Number of points in y-direction
+N <- 10 # number of samples
+
+f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
+
+x <- seq(0, 1, length=I)
+y <- seq(0, 1, length=J)
+
+KLDecomp1 <- GetKLDecomposition(I=I, J=J, nu=1, sigma2=1, tau=1) # THIS IS VERY SLOW
+GP.samples <- GenerateSamples(N, KLDecomp1, I=I, J=J)#, f.base=f.base)
+#fields::image.plot(x, y, GP.samples[[1]])
+
+z <- GPMC2D.2(GP.samples)
+
+#fields::image.plot(x, y, z$mean)
 
 fig <- plot_ly(x=x, y=y, z=z$mean) %>% add_surface()
 fig
