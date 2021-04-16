@@ -3,7 +3,7 @@ library(plotly)
 source("include/PDEFunctions.R")
 source("include/MonteCarloIntegration.R")
 
-#####################################################################
+###############################################################################
 # Exercise 2
 
 # evaluates the basis functions/eigenfunctions
@@ -44,7 +44,7 @@ fig <- plot_ly(x=x, y=y, z=z) %>% add_surface()
 fig
 
 
-##################################################
+###############################################################################
 # Exercise 5
 
 I.func <- function(x, L=1){
@@ -83,217 +83,217 @@ for(i in 2:kappas.N){
   lines(x, T.x.t(x, t.star, kappas[i], N=10), col=colours.rainbow[i])
 }
 
-##########################################
+###############################################################################
 # Exercise 7
+# Karhunen-Loeve implementation
 
-library(fields)
+source("include/GPFunctions2D.R")
+#library(plotly)
 
-GPMatern2D <- function(N, nu, tau, Lx=1, Ly=1, Nx=300, Ny=300, I=100, J=100){
-  # N:    number of samples
-  # nu:   matern smootheness param (0.5=exponential)
-  # tau:  matern scale param
-  # Nx:   discretisation points on x-axis
-  # Ny:   discretisation points on y-axis
-  # Lx:   x-axis domain, [0, Lx]
-  # Ly:   y-axis domain, [0, Ly]
-  # I:    x-axis grid, initialisation size
-  # J:    y-axis grid, initialisation size
-  
-  # Increase I and J if circulantEmbedding() complains about "Weight function has negtive values".
-  
-  grid <- list(x=seq(0, I, length=100),
-               y=seq(0, J, length=100))
-  obj <- circulantEmbeddingSetup(grid, 
-                                 cov.args=list(Covariance="Matern",
-                                               smoothness=nu,
-                                               theta=tau
-                                 )
-  )
-  GRF1 <- circulantEmbedding(obj)
-}
-
-nu <- 2.5
-tau <- 0.5
-
-I <- 8
+I <- 35
 J <- I
+N <- 4 # number of samples
 
-grid <- list(x=seq(0, I, length=200),
-             y=seq(0, J, length=200))
-obj <- circulantEmbeddingSetup(grid, 
-                               cov.args=list(Covariance="Matern",
-                                             smoothness=nu,
-                                             theta=tau
-                                             )
-                               )
-GRF1 <- circulantEmbedding(obj)
-image.plot(grid[[1]][1:50], grid[[2]][1:50], GRF1[1:50, 1:50])
+x <- seq(0, 1, length=I)
+y <- seq(0, 1, length=J)
+z <- GenerateGP2D(N, I=I, J=J)
 
-
-
-
-
-###############################################################################
-
-nu <- 10
-tau <- 0.5
-
-I <- 10
-J <- 15
-
-grid <- list(x=seq(0, I/J, length=200),
-             y=seq(0, J/I, length=200))
-obj <- circulantEmbeddingSetup(grid, 
-                               cov.args=list(Covariance="Matern",
-                                             smoothness=nu,
-                                             range=tau/(I*J)
-                                             )
-                               )
-GRF1 <- circulantEmbedding(obj)
-image.plot(J*grid[[1]]/(I), I*grid[[2]]/(J), GRF1)
-
-
-
-
-
-
-###############################################################################
-
-set.seed(2021)
-par(mfrow=c(1,2))
-
-##########################
-# 1
-
-nu <- 0.5
-tau <- 0.5
-
-I <- 2
-J <- 2
-
-grid <- list(x=seq(0, I, length=80),
-             y=seq(0, J, length=80))
-obj <- circulantEmbeddingSetup(grid, 
-                               cov.args=list(Covariance="Matern",
-                                             smoothness=nu,
-                                             range=tau
-                               )
-)
-GRF1 <- circulantEmbedding(obj)
-image.plot(grid[[1]], grid[[2]], GRF1)
-
-
-##########################
-# 2
-
-set.seed(2021)
-nu <- 0.5
-tau <- 0.5
-
-I <- 2
-J <- 2
-
-grid <- list(x=seq(0, I, length=100),
-             y=seq(0, J, length=100))
-obj <- circulantEmbeddingSetup(grid, 
-                               cov.args=list(Covariance="Matern",
-                                             smoothness=nu,
-                                             range=tau
-                               )
-)
-GRF1 <- circulantEmbedding(obj)
-image.plot(grid[[1]], grid[[2]], GRF1)
+par(mfrow=c(2,2))
+fields::image.plot(x, y, z[[1]])
+fields::image.plot(x, y, z[[2]])
+fields::image.plot(x, y, z[[3]])
+fields::image.plot(x, y, z[[4]])
 par(mfrow=c(1,1))
 
 
+#fig <- plot_ly(x=x, y=y, z=z[[1]]) %>% add_surface()
+#fig
+
+########################
 
 
-#################################################################################
-library(plgp)
-
-
-
-
-
-# kernel function
-rbf_D <- function(X,l=1, eps = sqrt(.Machine$double.eps) ){
-  D <- plgp::distance(X)
-  Sigma <- exp(-D/l)^2# + diag(eps, nrow(X))
-}
-# number of samples
-nx <- 30
-x <- seq(0,1,length=nx)
-#grid of pairwise values
-X <- expand.grid(x, x)
-# compute squared exponential kernel on pairwise values
-Sigma <- rbf_D(X,l=2)
-
-# sample from multivariate normal with mean zero, sigma = sigma
-Y <- MASS::mvrnorm(1,rep(0,dim(Sigma)[1]), Sigma)
-
-# plot results
-pp <- data.frame(y=Y,x1=X[,1],x2=X[,2])
-z <- matrix(pp$y, ncol=30, nrow=30, byrow=FALSE)
-
-fig <- plot_ly(x=x, y=x, z=z) %>% add_surface()
-fig
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-############################################################################
-# Karhunen-Loeve attempt
 
 source("include/GPFunctions2D.R")
-library(plotly)
+#library(plotly)
 
-I <- 50
-J <- 50
-M <- I*J
+I <- 35
+J <- I
+N <- 4 # number of samples
 
 x <- seq(0, 1, length=I)
 y <- seq(0, 1, length=J)
 
-tic2 <- Sys.time()
-z <- GenerateGP2D(1, M=M, I=I)
-Sys.time() - tic2
+KLDecomp1 <- GetKLDecomposition(I=I, J=J, nu=0.1, sigma2=1, tau=1) # THIS IS VERY SLOW
+KLDecomp2 <- GetKLDecomposition(I=I, J=J, nu=1, sigma2=1, tau=1) # THIS IS VERY SLOW
+KLDecomp3 <- GetKLDecomposition(I=I, J=J, nu=1.5, sigma2=1, tau=1) # THIS IS VERY SLOW
+KLDecomp4 <- GetKLDecomposition(I=I, J=J, nu=3, sigma2=1, tau=1) # THIS IS VERY SLOW
+KLDecomp5 <- GetKLDecomposition(I=I, J=J, nu=0.5, sigma2=10, tau=1) # THIS IS VERY SLOW
 
-tic2 <- Sys.time()
-z <- GenerateGP2D(4, M=M, I=I)
-Sys.time() - tic2
-
+#samples <- GenerateSamples(N, KLDecomp)
 
 par(mfrow=c(2,2))
-persp(x, y, z[[1]])
-persp(x, y, z[[2]])
-persp(x, y, z[[3]])
-persp(x, y, z[[4]])
+fields::image.plot(x, y, GenerateSamples(1, KLDecomp1, I=I, J=J)[[1]])
+fields::image.plot(x, y, GenerateSamples(1, KLDecomp2, I=I, J=J)[[1]])
+fields::image.plot(x, y, GenerateSamples(1, KLDecomp3, I=I, J=J)[[1]])
+fields::image.plot(x, y, GenerateSamples(1, KLDecomp4, I=I, J=J)[[1]])
+par(mfrow=c(1,1))
+
+par(mfrow=c(1,2))
+contour(x, y, GenerateSamples(1, KLDecomp1, I=I, J=J)[[1]])
+contour(x, y, GenerateSamples(1, KLDecomp4, I=I, J=J)[[1]])
+par(mfrow=c(1,1))
+
+#fig <- plot_ly(x=x, y=y, z=GenerateSamples(1, KLDecomp1, I=I, J=J)[[1]]) %>% add_surface()
+#fig
+
+###############
+
+I <- 35
+J <- I
+N <- 1 # number of samples
+
+x <- seq(0, 1, length=I)
+y <- seq(0, 1, length=J)
+
+nu <- c(0.5, 1.5, 2.5, 3.5)
+
+samples <- list()
+for(i in 1:4){
+  KLDecomp <- GetKLDecomposition(I=I, J=J, nu=nu[i]) # THIS IS VERY SLOW
+
+  samples[[i]] <- GenerateSamples(N, KLDecomp, I=I, J=J)[[1]]
+}
+
+par(mfrow=c(2,2))
+fields::image.plot(x, y, samples[[1]])
+fields::image.plot(x, y, samples[[2]])
+fields::image.plot(x, y, samples[[3]])
+fields::image.plot(x, y, samples[[4]])
 par(mfrow=c(1,1))
 
 
-fig <- plot_ly(x=x, y=y, z=z[[1]]) %>% add_surface()
+
+
+###############################################################################
+# Exercise 8
+
+source("include/GPFunctions2D.R")
+source("include/PDEFunctions.R")
+source("include/MonteCarloIntegration.R")
+library(pracma) # used for interp2()
+library(plotly)
+
+# evaluates the basis functions/eigenfunctions
+v.n.m <- function(n, m, x, y, Lx=1, Ly=1){
+  a <- 2/sqrt(Lx*Ly)
+  b <- sin(n*pi*x/Lx)
+  c <- sin(m*pi*y/Ly)
+  
+  return(a*b*c)
+}
+
+# evaluates the eigenvalues
+beta.n.m <- function(n, m, Lx=1, Ly=1){
+  return(((n/Lx)^2 + (m/Ly)^2)*pi^2)
+}
+
+g(n, m, k, l, Lx=1, Ly=1){
+  a <- 16 * Lx^2 * Ly^2
+  b <- pi^4 *n*m*k*l
+  
+  return(a/b)
+}
+
+# calcuate the mean when f~GP
+GPMC2D.mean <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
+  # GPSamples:  list of GP samples (must include a f.base if required)
+  # N:          x-direction summation limit
+  # M:          y-direction summation limit
+  # Lx:         x-axis domain, [0, Lx]
+  # Ly:         y-axis domain, [0, Ly]
+  
+  no.samples <- length(GPSamples)
+  GP.mean <- Reduce('+', GPSamples)/no.samples
+  
+  I <- dim(GPSamples[[1]])[1]
+  J <- dim(GPSamples[[1]])[2]
+  
+  x <- seq(0, Lx, length=I)
+  y <- seq(0, Ly, length=J)
+  p.f <- lapply(1:no.samples, function(i) matrix(0, nrow=I, ncol=J))
+  p.f.mean <- matrix(0, nrow=I, ncol=J)
+  p.f.variance <- matrix(0, nrow=I, ncol=J)
+  
+  for(n in 1:N){
+    for(m in 1:M){
+      # calculate the spectral coefficients
+      #f.n.m <- MonteCarlo2D(user.func=function(x, y) StepFunction2D(x, y)*v.n.m(n, m, x, y))$mean
+      f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+        interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
+          v.n.m(n, m, x, y)
+        })$mean
+      
+      # evaluate the mean terms
+      for(i in 1:length(x)){
+        p.f.mean[i, ] <- p.f.mean[i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
+      }
+      
+      # evaluate the variance terms
+      # if(n*m %% 2 == 1){
+      #   odds <- seq(1, N, by=2)
+      #   for(k in odds){
+      #     p.f.variance <- p.f.variance + v.n.m(n,m,x)
+      #   }
+      # }
+      
+      
+      for(k in 1:no.samples){
+        f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+          interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
+            v.n.m(n, m, x, y)
+          }, N=2000)$mean
+        
+        # evaluate the terms
+        for(i in 1:length(x)){
+          p.f[[k]][i, ] <- p.f[[k]][i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
+        }
+      }
+      
+      
+      
+      
+      
+      
+    }
+  }
+  
+  # sum the solutions divide to get the mean
+  return(list("p.f"=p.f,
+              "mean"=p.f.mean,
+              "variance"=sigma2*p.f.variance)
+         )
+}
+
+
+
+I <- 35
+J <- I
+N <- 10 # number of samples
+
+f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
+
+x <- seq(0, 1, length=I)
+y <- seq(0, 1, length=J)
+
+KLDecomp1 <- GetKLDecomposition(I=I, J=J, nu=1, sigma2=1, tau=1) # THIS IS VERY SLOW
+GP.samples <- GenerateSamples(N, KLDecomp1, I=I, J=J)#, f.base=f.base)
+#fields::image.plot(x, y, GP.samples[[1]])
+
+z <- GPMC2D.mean(GP.samples)
+
+#fields::image.plot(x, y, z)
+
+fig <- plot_ly(x=x, y=y, z=z$mean) %>% add_surface()
 fig
-
-
-
-
-
-
 
 
