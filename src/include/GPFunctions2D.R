@@ -23,23 +23,6 @@ DecodeLocation2D <- function(m, I){
   return(c(i, j))
 }
 
-# PhiBasis2D <- function(m, eta, I, Lx=1, Ly=1){
-#   # m:    encoded basis number
-#   # eta:  2D location vector
-#   # Lx:   x-axis domain, [0, Lx]
-#   # Ly:   y-axis domain, [0, Ly]
-#   
-#   m.decoded <- DecodeLocation2D(m, I)
-#   i <- m.decoded[1]
-#   j <- m.decoded[2]
-#   
-#   a <- 2/sqrt(Lx*Ly)
-#   b <- sin(i*pi*eta[1]/Lx)
-#   c <- sin(j*pi*eta[2]/Ly)
-#   
-#   return(a*b*c)
-# }
-
 #############
 # GENERAL FUNCTIONS
 #############
@@ -128,11 +111,10 @@ SolveEigenProblem <- function(C, k=50){
          )
 }
 
-GenerateGP2D <- function(N=1, k=50, M=FALSE, I=FALSE, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1){
-  # N:      number of 2D GP samples to draw
+GetKLDecomposition <- function(k=50, I=FALSE, J=FALSE, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1){
   # k:      Summation upper limit
-  # M:      Total number of evaluated points, I*J
   # I:      Number of cells along x-axis
+  # J:      Number of cells along y-axis
   # sigma2: variance
   # nu:     smoothness variable
   # tau:    range variable
@@ -143,47 +125,107 @@ GenerateGP2D <- function(N=1, k=50, M=FALSE, I=FALSE, sigma2=1, nu=0.5, tau=1, L
   # CHECK INPUTS
   ###########
   
-  if(M == FALSE && I == FALSE){
-    print("ERROR: At least one of M or I must be set.")
+  if(I == FALSE && J == FALSE){
+    print("ERROR: At least one of I or J must be set.")
     return(1)
-  }else if(M == FALSE){
-    M <- I^2
+  }else if(J == FALSE){
+    J <- I
   }else if(I == FALSE){
-    I <- sqrt(M)
-  }else if(M %% I != 0){
-    print("ERROR: I must divide M exactly.")
-    return(2)
+    I <- J
   }
+  
+  M <- I*J
   
   ###########
   # IMPLEMENTATION
   ###########
   
-  C <- GenerateC(M, I)
+  C <- GenerateC(M, I, sigma2=sigma2, nu=nu, tau=tau, Lx=Lx, Ly=Ly)
   eigen.sol <- SolveEigenProblem(C, k)
   
-  J <- M/I
+  return(eigen.sol)
+}
+
+GenerateSamples <- function(N, KLDecomp, f.base=FALSE, I=FALSE, J=FALSE){
+  # N:        Number of 2D GP samples to draw
+  # KLDecomp: returned decomposition from GetKLDecomposition()
+  # f.base:   The base function (v-bar in the notes), must be pre-calculated and in matrix form of dimensions (I x J)
+  # I:        Number of cells along x-axis
+  # J:        Number of cells along y-axis
+  
+  if(I==FALSE && J==FALSE){
+    I <- sqrt(length(KLDecomp$funcs[, 1]))
+    J <- I
+  }else if(I==FALSE){
+    I <- length(KLDecomp$funcs[, 1])/J
+  }else if(J==FALSE){
+    J <- length(KLDecomp$funcs[, 1])/I
+  }else if(length(KLDecomp$funcs[, 1]) != I*J){
+    print("The dimensions requested do not agree with the decomposition provided.")
+    return()
+  }
+  
+  if(identical(f.base, FALSE)){
+    f.base <- matrix(0, nrow=I, ncol=J)
+  }else if(dim(f.base)[1] != I || dim(f.base)[2] != J){
+    print("The dimensions of f.base do not agree with I and J.")
+    return()
+  }
   
   GPsamples <- list()
   
   for(n in 1:N){
     # initiate the nth sample
-    GPsamples[[n]] <- matrix(0, nrow=I, ncol=J)
+    GPsamples[[n]] <- f.base
     
-    for(i in 1:eigen.sol$n){
-      a <- sqrt(eigen.sol$values[i])*eigen.sol$funcs[, i]*rnorm(1, 0, 1)
+    for(i in 1:KLDecomp$n){
+      a <- sqrt(KLDecomp$values[i])*KLDecomp$funcs[, i]*rnorm(1, 0, 1)
       GPsamples[[n]] <- GPsamples[[n]] + matrix(a, byrow=FALSE, nrow=I, ncol=J)
     }
-    
-    #GPsamples[[n]] <- t(GPsamples[[n]])
   }
   
   return(GPsamples)
 }
 
+GenerateGP2D <- function(N=1, k=50, I=FALSE, J=FALSE, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1, suppress.warning=FALSE){
+  # N:      number of 2D GP samples to draw
+  # k:      Summation upper limit
+  # I:      Number of cells along x-axis
+  # J:      Number of cells along y-axis
+  # sigma2: variance
+  # nu:     smoothness variable
+  # tau:    range variable
+  # Lx:     x-axis domain, [0, Lx]
+  # Ly:     y-axis domain, [0, Ly]
+  
+  if(suppress.warning == FALSE){
+    print("Avoid using this function. Instead, use GetKLDecomposition() and save the output. Then use GenerateSamples().")
+  }
+  
+  # get the Karhunen-Loeve decomposition
+  eigen.sol <- GetKLDecomposition(k, I, J, sigma2, nu, tau, Lx=1, Ly=1)
+  
+  return(GenerateSamples(N, eigen.sol, I=I, J=J))
+}
 
-
-
+FunctionToMatrix <- function(f, I, J, Lx=1, Ly=1){
+  # f:      The base function (f in the notes), must accept 2 inputs (x,y)
+  # I:      Number of cells along x-axis
+  # J:      Number of cells along y-axis
+  # Lx:     x-axis domain, [0, Lx]
+  # Ly:     y-axis domain, [0, Ly]
+  
+  x <- seq(0, Lx, length=I)
+  y <- seq(0, Lx, length=J)
+  
+  f.matrix <- matrix(0, nrow=I, ncol=J)
+  
+  for(j in 1:J){
+    f.matrix[, j] <- sapply(x, f, y[j])
+  }
+  
+  return(f.matrix)
+}
 
 
 
