@@ -297,7 +297,8 @@ GP.samples <- GenerateSamples(N, KLDecomp1, I=I, J=J, f.base=f.base)
 #fields::image.plot(x, y, GP.samples[[1]])
 
 # solve the PDE
-z <- GPMonteCarlo2D(GP.samples)
+# THE LARGER N, I or J, THE SLOWER THIS FUNCTION
+z <- RandomFieldMonteCarlo2D(GP.samples)
 
 ############
 # solution
