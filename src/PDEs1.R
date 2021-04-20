@@ -313,7 +313,7 @@ GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
   # Ly:         y-axis domain, [0, Ly]
   
   no.samples <- length(GPSamples)
-  #GP.mean <- Reduce('+', GPSamples)/no.samples
+  GP.mean <- Reduce('+', GPSamples)/no.samples
   
   I <- dim(GPSamples[[1]])[1]
   J <- dim(GPSamples[[1]])[2]
@@ -327,24 +327,17 @@ GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
   for(n in 1:N){
     for(m in 1:M){
       # calculate the spectral coefficients
-      #f.n.m <- MonteCarlo2D(user.func=function(x, y) StepFunction2D(x, y)*v.n.m(n, m, x, y))$mean
-      # f.n.m <- MonteCarlo2D(user.func=function(x, y) {
-      #   interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
-      #     v.n.m(n, m, x, y)
-      # })$mean
+      f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+        interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
+          v.n.m(n, m, x, y)
+      })$mean
       
       # evaluate the mean terms
-      # for(i in 1:length(x)){
-      #   p.f.mean[i, ] <- p.f.mean[i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
-      # }
+      for(i in 1:length(x)){
+        p.f.mean[i, ] <- p.f.mean[i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
+      }
       
-      # evaluate the variance terms
-      # if(n*m %% 2 == 1){
-      #   odds <- seq(1, N, by=2)
-      #   for(k in odds){
-      #     p.f.variance <- p.f.variance + v.n.m(n,m,x)
-      #   }
-      # }
+
       
       
       for(k in 1:no.samples){
@@ -360,20 +353,28 @@ GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
         }
       }
       
-      p.f.mean <- Reduce('+', p.f)/no.samples
-      
-      # CALCUATE THE VARIANCE HERE
-      
       
       
     }
   }
   
-  # sum the solutions divide to get the mean
+  #p.f.mean <- Reduce('+', p.f)/no.samples
+      
+  # estimate the variance
+  
+  # for(i in 1:I){
+  #   for(j in 1:J){
+  #     p.f.variance[i, j] <- var()
+  #   }
+  # }
+  
+  p.f.variance <- round(apply(array(unlist(z$p.f), c(I, J, N)), c(1, 2), var), 6)
+  
+  
   return(list("p.f"=p.f,
               "mean"=p.f.mean,
-              "variance"=sigma2*p.f.variance)
-  )
+              "variance"=p.f.variance)
+         )
 }
 
 
@@ -407,10 +408,11 @@ fig
 
 #fields::image.plot(x, y, round(apply(array(unlist(z$p.f), c(I, J, N)), c(1,2), sd),5))
 
-fig <- plot_ly(x=x, y=y, z=round(apply(array(unlist(z$p.f), c(I, J, N)), c(1,2), sd),5)) %>% add_surface()
+# fig <- plot_ly(x=x, y=y, z=round(apply(array(unlist(z$p.f), c(I, J, N)), c(1,2), sd),5)) %>% add_surface()
+# fig
+
+fig <- plot_ly(x=x, y=y, z=z$p.f.variance) %>% add_surface()
 fig
-
-
 
 
 #############
