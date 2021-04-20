@@ -381,9 +381,10 @@ GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
 
 I <- 35 # Number of points in x-direction
 J <- I  # Number of points in y-direction
-N <- 1000 # number of samples
+N <- 100 # number of samples
 
 #f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
+f.base <- matrix(0.5, nrow=I, ncol=J)
 
 x <- seq(0, 1, length=I)
 y <- seq(0, 1, length=J)
