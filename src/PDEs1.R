@@ -246,19 +246,19 @@ GPMC2D.mean <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
       #   }
       # }
       
-      
-      for(k in 1:no.samples){
-        f.n.m <- MonteCarlo2D(user.func=function(x, y) {
-          interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
-            v.n.m(n, m, x, y)
-          }, N=2000)$mean
-        
-        # evaluate the terms
-        for(i in 1:length(x)){
-          p.f[[k]][i, ] <- p.f[[k]][i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
-        }
-      }
-      
+      # 
+      # for(k in 1:no.samples){
+      #   f.n.m <- MonteCarlo2D(user.func=function(x, y) {
+      #     interp2(seq(0, Lx, length=I), seq(0, Ly, length=J), t(GP.mean), x, y, method="linear")*
+      #       v.n.m(n, m, x, y)
+      #     }, N=2000)$mean
+      #   
+      #   # evaluate the terms
+      #   for(i in 1:length(x)){
+      #     p.f[[k]][i, ] <- p.f[[k]][i, ] + f.n.m*beta.n.m(n, m)^(-1)*v.n.m(n, m, x[i], y)
+      #   }
+      # }
+      # 
       
       
       
@@ -278,7 +278,7 @@ GPMC2D.mean <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
 
 I <- 35
 J <- I
-N <- 10 # number of samples
+N <- 100 # number of samples
 
 f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
 
@@ -380,9 +380,9 @@ GPMC2D.2 <- function(GPSamples, N=10, M=10, Lx=1, Ly=1, sigma2=1){
 
 I <- 35 # Number of points in x-direction
 J <- I  # Number of points in y-direction
-N <- 10 # number of samples
+N <- 1000 # number of samples
 
-f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
+#f.base <- FunctionToMatrix(StepFunction2D, I=I, J=J)
 
 x <- seq(0, 1, length=I)
 y <- seq(0, 1, length=J)
@@ -395,7 +395,31 @@ z <- GPMC2D.2(GP.samples)
 
 #fields::image.plot(x, y, z$mean)
 
+fig <- plot_ly(x=x, y=y, z=Reduce('+', GP.samples)/N) %>% add_surface()
+fig
+
+
 fig <- plot_ly(x=x, y=y, z=z$mean) %>% add_surface()
 fig
+
+############
+# variance
+
+#fields::image.plot(x, y, round(apply(array(unlist(z$p.f), c(I, J, N)), c(1,2), sd),5))
+
+fig <- plot_ly(x=x, y=y, z=round(apply(array(unlist(z$p.f), c(I, J, N)), c(1,2), sd),5)) %>% add_surface()
+fig
+
+
+
+
+#############
+# histogram
+
+central.values <- numeric(N)
+for(n in 1:N){
+  central.values[n] <- interp2(x, y, z$p.f[[n]], 0.5, 0.5, method="linear")
+}
+hist(central.values)
 
 
