@@ -21,7 +21,7 @@ beta.n.m <- function(n, m, Lx=1, Ly=1){
 }
 
 
-N <- 16
+N <- 8
 M <- N
 
 # x and y values on which make up the grid
@@ -49,14 +49,14 @@ for(n in 1:N){
 ##### THIS IS THE BIT THAT IS PROBABLY WRONG.
 # Add on noise to the true solution
 p.eta <- p.solution
-theta <- 1e-5*max(p.solution) # This comes from equation 48 in the notes. Should this be as in Exercise 9?
+theta <- 1e-8*max(p.solution) # This comes from equation 48 in the notes. Should this be as in Exercise 9?
 
-k <- 40
+k <- 10
 l <- k
 
 for(i in 1:length(x)){
   for(j in 1:length(y)){
-    p.eta[i, j] <- p.eta[i, j] + theta*v.n.m(k, l, x[i], y[j])/2
+    p.eta[i, j] <- p.eta[i, j] + theta*v.n.m(k, l, x[i], y[j])#/2
   }
 }
 
