@@ -79,7 +79,25 @@ for(n in 1:N.max){
   }
 }
 
-fields::image.plot(x.grid, y.grid, reconstruction, main="Reconstruction")
+fields::image.plot(x.grid, y.grid, reconstruction, main=paste0("Reconstruction at t=t.star. N=", N.max))
 fields::image.plot(x.grid, y.grid, p.eta, main="True Data")
 
+
+
+###############################################################
+# Find the initial condition
+
+
+initial.condition <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
+
+for(n in 1:N.max){
+  for(m in 1:M.max){
+    # evaluate the plotting points
+    for(i in 1:length(x.grid)){
+      initial.condition[i, ] <- initial.condition[i, ] + W.n.m[n, m]*v.n.m(n, m, x.grid[i], y.grid)
+    }
+  }
+}
+
+fields::image.plot(x.grid, y.grid, initial.condition, main=paste0("Initial Condition. N=", N.max))
 
