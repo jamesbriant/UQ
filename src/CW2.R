@@ -1,7 +1,7 @@
 library(pracma) # used for interp2()
 source("include/MonteCarloIntegration.R")
 
-GetWnm <- function(N, M=FALSE){
+GetWnm <- function(N, M=FALSE, c=0.5){
   # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
   # REQUIRES `pracma` to be installed!
 
@@ -43,7 +43,7 @@ GetWnm <- function(N, M=FALSE){
   for(n in 1:N){
     for(m in 1:M){
       # calculate the spectral coefficients
-      W.n.m[n, m] <- cos(sqrt(beta.n.m(n, m))*0.322)*
+      W.n.m[n, m] <- 1/cos(sqrt(beta.n.m(n, m))*0.322*c)*
         MonteCarlo2D(
           user.func=function(x, y){
             pracma::interp2(x.grid, y.grid, t(p.eta), x, y)*
