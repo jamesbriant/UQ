@@ -5,7 +5,6 @@ GetWnm <- function(N, M=FALSE){
   # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
   # REQUIRES `pracma` to be installed!
 
-  
   raw.data <- read.delim("data/Data_groupB.txt", header=FALSE)
   x.grid <- unique(raw.data$V1)
   x.grid <- c(0, x.grid, 1)
@@ -27,6 +26,11 @@ GetWnm <- function(N, M=FALSE){
     return(a*b*c)
   }
   
+  # evaluates the eigenvalues
+  beta.n.m <- function(n, m, Lx=1, Ly=1){
+    return(((n/Lx)^2 + (m/Ly)^2)*pi^2)
+  }
+  
   #################
   # Find Wnm
   
@@ -39,9 +43,14 @@ GetWnm <- function(N, M=FALSE){
   for(n in 1:N){
     for(m in 1:M){
       # calculate the spectral coefficients
-      W.n.m[n, m] <- MonteCarlo2D(user.func=function(x, y){
-        pracma::interp2(x.grid, y.grid, t(p.eta), x, y)*
-          v.n.m(n, m, x, y)}, N=1000)$mean
+      W.n.m[n, m] <- cos(sqrt(beta.n.m(n, m))*0.322)*
+        MonteCarlo2D(
+          user.func=function(x, y){
+            pracma::interp2(x.grid, y.grid, t(p.eta), x, y)*
+            v.n.m(n, m, x, y)
+          }, 
+          N=5000
+        )$mean
     }
   }
   
@@ -49,8 +58,8 @@ GetWnm <- function(N, M=FALSE){
 }
 
 
-Test <- GetWnm(10, 10) # may take a couple of seconds to load...
-
+Test <- GetWnm(10, 10) # may take a little while to load...
+fields::image.plot(1:10, 1:10, Test)
 
 
 
