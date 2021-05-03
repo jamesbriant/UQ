@@ -1,4 +1,5 @@
 library(pracma) # used for interp2()
+#library(plotly)
 source("include/MonteCarloIntegration.R")
 
 raw.data <- read.delim("data/Data_groupB.txt", header=FALSE)
@@ -59,9 +60,9 @@ GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSiz
 
 
 
-N.max <- 15
+N.max <- 18
 M.max <- N.max
-W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta) # may take a little while to load...
+W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta, N=20000) # may take a little while to load...
 
 
 ##########################################################
@@ -82,6 +83,8 @@ for(n in 1:N.max){
 fields::image.plot(x.grid, y.grid, reconstruction, main=paste0("Reconstruction at t=t.star. N=", N.max))
 fields::image.plot(x.grid, y.grid, p.eta, main="True Data")
 
+#fig <- plot_ly(x=x.grid, y=y.grid, z=reconstruction) %>% add_surface()
+#fig
 
 
 ###############################################################
@@ -100,4 +103,37 @@ for(n in 1:N.max){
 }
 
 fields::image.plot(x.grid, y.grid, initial.condition, main=paste0("Initial Condition. N=", N.max))
+
+#fig <- plot_ly(x=x.grid, y=y.grid, z=initial.condition) %>% add_surface()
+#fig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
