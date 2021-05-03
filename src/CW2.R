@@ -62,7 +62,7 @@ GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSiz
 
 N.max <- 18
 M.max <- N.max
-W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta, N=20000) # may take a little while to load...
+W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta, MonteCarloSize=20000) # may take a little while to load...
 
 
 ##########################################################
