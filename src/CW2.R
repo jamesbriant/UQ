@@ -92,22 +92,22 @@ fields::image.plot(x.grid, y.grid, d.eta, main="True Data")
 # Find the initial condition - No UQ is done using this method
 # Do not need to run this section
 
-
-initial.condition <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
-
-for(n in 1:N.max){
-  for(m in 1:M.max){
-    # evaluate the plotting points
-    for(i in 1:length(x.grid)){
-      initial.condition[i, ] <- initial.condition[i, ] + W.n.m[n, m]*v.n.m(n, m, x.grid[i], y.grid)
-    }
-  }
-}
-
-fields::image.plot(x.grid, y.grid, initial.condition, main=paste0("Initial Condition. N=", N.max))
-
-#fig <- plot_ly(x=x.grid, y=y.grid, z=initial.condition) %>% add_surface()
-#fig
+# 
+# initial.condition <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
+# 
+# for(n in 1:N.max){
+#   for(m in 1:M.max){
+#     # evaluate the plotting points
+#     for(i in 1:length(x.grid)){
+#       initial.condition[i, ] <- initial.condition[i, ] + W.n.m[n, m]*v.n.m(n, m, x.grid[i], y.grid)
+#     }
+#   }
+# }
+# 
+# fields::image.plot(x.grid, y.grid, initial.condition, main=paste0("Initial Condition. N=", N.max))
+# 
+# #fig <- plot_ly(x=x.grid, y=y.grid, z=initial.condition) %>% add_surface()
+# #fig
 
 
 
@@ -156,8 +156,8 @@ solution <- operator.inverted %*% data.interpolated
 
 fields::image.plot(F.grid.x, F.grid.y, solution)
 
-fig <- plot_ly(x=F.grid.x, y=F.grid.y, z=solution) %>% add_surface()
-fig
+#fig <- plot_ly(x=F.grid.x, y=F.grid.y, z=solution) %>% add_surface()
+#fig
 
 
 
