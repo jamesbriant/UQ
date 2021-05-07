@@ -195,20 +195,22 @@ for(i in 1:x.grid.size){
 
 delta <- 1e-8
 
-operator.inverted <- t(F.h) %*% inv(F.h %*% t(F.h) + delta*diag(x.grid.size^2))
+operator.inverted <- t(F.h) %*% inv(F.h %*% t(F.h) + delta*diag(x.grid.size^2)) # equation 75 of notes
 solution.vector <- operator.inverted %*% as.matrix(p.eta.vector)
+# now convert back to a matrix
 solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
 
 fields::image.plot(F.x.grid, F.y.grid, solution)
 
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=solution) %>% add_surface()
-fig
+#fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=solution) %>% add_surface()
+#fig
 
 
 
 
 ################################################
 # This all needs flattening... gulp
+# This is the Bayesian steps, don't run this bit yet
 
 f.prior <- matrix(0.5, nrow=N.cells, ncol=N.cells)
 C.prior <- GenerateC(50^2, 50, sigma2=0.5, nu=0.5, tau=1) # THIS IS SLOW
