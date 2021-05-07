@@ -1,17 +1,22 @@
 library(pracma) # used for interp2()
 #library(plotly)
+# library(foreach)
+# library(parallel)
+# library(doParallel)
 source("include/MonteCarloIntegration.R")
 source("include/GPFunctions2D.R")
 
 raw.data <- read.delim("data/Data_groupB.txt", header=FALSE)
 x.grid <- unique(raw.data$V1)
 x.grid <- c(0, x.grid, 1)
+x.grid.size <- length(x.grid)
 y.grid <- unique(raw.data$V2)
 y.grid <- c(0, y.grid, 1)
-d.eta <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
-for(i in 2:(length(x.grid)-1)){
-  for(j in 2:(length(y.grid)-1)){
-    d.eta[i, j] <- raw.data$V3[30*((i-1)-1) + (j-1)]
+y.grid.size <- length(y.grid)
+p.eta <- matrix(0, nrow=x.grid.size, ncol=y.grid.size)
+for(i in 2:(x.grid.size-1)){
+  for(j in 2:(y.grid.size-1)){
+    p.eta[i, j] <- raw.data$V3[30*((i-1)-1) + (j-1)]
   }
 }
 
@@ -48,7 +53,7 @@ GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSiz
       W.n.m[n, m] <- 1/cos(sqrt(beta.n.m(n, m))*0.322*c)*
         MonteCarlo2D(
           user.func=function(x, y){
-            pracma::interp2(x.grid, y.grid, t(d.eta), x, y)*
+            pracma::interp2(x.grid, y.grid, t(p.eta), x, y)*
             v.n.m(n, m, x, y)
           }, 
           N=MonteCarloSize
@@ -61,28 +66,28 @@ GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSiz
 
 
 
-N.max <- 18
-M.max <- N.max
-W.n.m <- GetWnm(N.max, x.grid, y.grid, d.eta, MonteCarloSize=20000) # may take a little while to load...
+# N.max <- 18
+# M.max <- N.max
+# W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta, MonteCarloSize=20000) # may take a little while to load...
 
 
 ##########################################################
 # Reconstruct the data using the Wnm decomposition
 
-reconstruction <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
-
-for(n in 1:N.max){
-  for(m in 1:M.max){
-    # evaluate the plotting points
-    a <- 0.5*0.322*sqrt(beta.n.m(n, m, Lx=1, Ly=1))
-    for(i in 1:length(x.grid)){
-      reconstruction[i, ] <- reconstruction[i, ] + W.n.m[n, m]*cos(a)*v.n.m(n, m, x.grid[i], y.grid)
-    }
-  }
-}
-
-fields::image.plot(x.grid, y.grid, reconstruction, main=paste0("Reconstruction at t=t.star. N=", N.max))
-fields::image.plot(x.grid, y.grid, d.eta, main="True Data")
+# reconstruction <- matrix(0, nrow=x.grid.size, ncol=y.grid.size)
+# 
+# for(n in 1:N.max){
+#   for(m in 1:M.max){
+#     # evaluate the plotting points
+#     a <- 0.5*0.322*sqrt(beta.n.m(n, m, Lx=1, Ly=1))
+#     for(i in 1:x.grid.size){
+#       reconstruction[i, ] <- reconstruction[i, ] + W.n.m[n, m]*cos(a)*v.n.m(n, m, x.grid[i], y.grid)
+#     }
+#   }
+# }
+# 
+# fields::image.plot(x.grid, y.grid, reconstruction, main=paste0("Reconstruction at t=t.star. N=", N.max))
+# fields::image.plot(x.grid, y.grid, p.eta, main="True Data")
 
 #fig <- plot_ly(x=x.grid, y=y.grid, z=reconstruction) %>% add_surface()
 #fig
@@ -93,12 +98,12 @@ fields::image.plot(x.grid, y.grid, d.eta, main="True Data")
 # Do not need to run this section
 
 # 
-# initial.condition <- matrix(0, nrow=length(x.grid), ncol=length(y.grid))
+# initial.condition <- matrix(0, nrow=x.grid.size, ncol=y.grid.size)
 # 
 # for(n in 1:N.max){
 #   for(m in 1:M.max){
 #     # evaluate the plotting points
-#     for(i in 1:length(x.grid)){
+#     for(i in 1:x.grid.size){
 #       initial.condition[i, ] <- initial.condition[i, ] + W.n.m[n, m]*v.n.m(n, m, x.grid[i], y.grid)
 #     }
 #   }
@@ -130,34 +135,74 @@ GreensFunction <- function(x1, y1, t, x2, y2, N.max=18, M.max=FALSE, c=0.5){
   return(gf)
 }
 
+##############
 # Set up the location of the centre of the cells
-N.cells <- 50
-F.grid.x <- seq(0, 1, length=N.cells+1)[1:N.cells]
-h.x <- F.grid.x[2] - F.grid.x[1]
-F.grid.x <- h.x/2 + F.grid.x
-F.grid.y <- F.grid.x # y discretisation is the same as x discretisation
+N.cells <- 50 # Number of cells in x and y-direction
+
+# Set up the x-direction discretisation
+F.x.grid <- seq(0, 1, length=N.cells+1)[1:N.cells]
+h.x <- F.x.grid[2] - F.x.grid[1]
+F.x.grid <- h.x/2 + F.x.grid
+F.x.grid.size <- length(F.x.grid)
+
+# Set up the y-direction discretisation
+F.y.grid <- F.x.grid # y discretisation is the same as x discretisation
+F.y.grid.size <- length(F.y.grid)
 h.y <- h.x
 
-F.h <- matrix(0, nrow=N.cells, ncol=N.cells) # matrix of Green's functions evaluations
-data.interpolated <- matrix(0, nrow=N.cells, ncol=N.cells)
-for(i in 1:N.cells){
+# Generate the F^h matrix in the notes
+# start1 <- Sys.time()
+F.h <- matrix(0, nrow=x.grid.size^2, ncol=N.cells^2) # matrix of Green's functions evaluations
+pb <- txtProgressBar(min = 0, max = x.grid.size^2, style = 3) # progress bar
+for(i in 1:(x.grid.size*y.grid.size)){
+  # clever matrix location decoder
+  temp <- DecodeLocation2D(i, x.grid.size)
+  x.grid.i <- temp[1]
+  y.grid.i <- temp[2]
+  
   for(j in 1:N.cells){
-    F.h[i, j] <- h.x*h.y*GreensFunction(F.grid.x[i], F.grid.y[i], 0, F.grid.x[j], F.grid.y[j])
-    data.interpolated[i, j] <- pracma::interp2(x.grid, y.grid, t(d.eta), F.grid.x[i], F.grid.y[j])
+    F.h[i, ((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], 0.322, F.x.grid[j], F.y.grid)
   }
+  
+  setTxtProgressBar(pb, i) # update progress bar
 }
+# dur1 <- Sys.time() - start1
+# 
+# start2 <- Sys.time()
+# cl <- parallel::makeCluster(detectCores()-1)
+# doParallel::registerDoParallel(cl)
+# F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind') %dopar% {
+#   # clever matrix location decoder
+#   temp <- DecodeLocation2D(i, x.grid.size)
+#   x.grid.i <- temp[1]
+#   y.grid.i <- temp[2]
+#   
+#   output <- numeric(N.cells^2)
+#   
+#   for(j in 1:N.cells){
+#     output[((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], 0, F.x.grid[j], F.y.grid)
+#   }
+#   
+#   output
+# }
+# parallel::stopCluster(cl)
+# dur2 <- Sys.time() - start2
 
-#fields::image.plot(F.grid.x, F.grid.y, F.h)
+p.eta.vector <- numeric(x.grid.size*y.grid.size)
+for(i in 1:x.grid.size){
+  p.eta.vector[((i-1)*x.grid.size+1):(i*x.grid.size)] <- p.eta[i, ]
+}
 
 delta <- 1e-8
 
-operator.inverted <- t(F.h) %*% inv(t(F.h) %*% F.h + delta*diag(N.cells))
-solution <- operator.inverted %*% data.interpolated
+operator.inverted <- t(F.h) %*% inv(F.h %*% t(F.h) + delta*diag(x.grid.size^2))
+solution.vector <- operator.inverted %*% as.matrix(p.eta.vector)
+solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
 
-fields::image.plot(F.grid.x, F.grid.y, solution)
+fields::image.plot(F.x.grid, F.y.grid, solution)
 
-#fig <- plot_ly(x=F.grid.x, y=F.grid.y, z=solution) %>% add_surface()
-#fig
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=solution) %>% add_surface()
+fig
 
 
 
@@ -173,9 +218,9 @@ f.pos <- f.prior + A.temp %*% (data.interpolated - F.h %*% f.prior)
 C.pos <- C.prior - A.temp %*% F.h %*% C.prior
 
 
-fields::image.plot(F.grid.x, F.grid.y, f.pos)
+fields::image.plot(F.x.grid, F.y.grid, f.pos)
 
-fig <- plot_ly(x=F.grid.x, y=F.grid.y, z=f.pos) %>% add_surface()
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=f.pos) %>% add_surface()
 fig
 
 
