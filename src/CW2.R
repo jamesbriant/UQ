@@ -1,8 +1,5 @@
 library(pracma) # used for interp2()
 #library(plotly)
-# library(foreach)
-# library(parallel)
-# library(doParallel)
 source("include/MonteCarloIntegration.R")
 source("include/GPFunctions2D.R")
 
@@ -128,7 +125,7 @@ GreensFunction <- function(x1, y1, t, x2, y2, N.max=18, M.max=FALSE, c=0.5){
   
   for(n in 1:N.max){
     for(m in 1:M.max){
-      gf <- gf + v.n.m(n, m, x1, y1)*v.n.m(n, m, x2, y2)*cos(c*t*pi*sqrt(n^2 + m^2))
+      gf <- gf + v.n.m(n, m, x1, y1)*v.n.m(n, m, x2, y2)/cos(c*t*pi*sqrt(n^2 + m^2))
     }
   }
   
@@ -150,52 +147,68 @@ F.y.grid <- F.x.grid # y discretisation is the same as x discretisation
 F.y.grid.size <- length(F.y.grid)
 h.y <- h.x
 
-# Generate the F^h matrix in the notes
-# start1 <- Sys.time()
-F.h <- matrix(0, nrow=x.grid.size^2, ncol=N.cells^2) # matrix of Green's functions evaluations
-pb <- txtProgressBar(min = 0, max = x.grid.size^2, style = 3) # progress bar
-for(i in 1:(x.grid.size*y.grid.size)){
-  # clever matrix location decoder
-  temp <- DecodeLocation2D(i, x.grid.size)
-  x.grid.i <- temp[1]
-  y.grid.i <- temp[2]
-  
-  for(j in 1:N.cells){
-    F.h[i, ((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], 0.322, F.x.grid[j], F.y.grid)
+
+GetF.h <- function(t){
+  F.h <- matrix(0, nrow=x.grid.size^2, ncol=N.cells^2) # matrix of Green's functions evaluations
+  pb <- txtProgressBar(min = 0, max = x.grid.size^2, style = 3) # progress bar
+  for(i in 1:(x.grid.size*y.grid.size)){
+    # clever matrix location decoder
+    temp <- DecodeLocation2D(i, x.grid.size)
+    x.grid.i <- temp[1]
+    y.grid.i <- temp[2]
+    
+    for(j in 1:N.cells){
+      F.h[i, ((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], t, F.x.grid[j], F.y.grid)
+    }
+    
+    setTxtProgressBar(pb, i) # update progress bar
   }
   
-  setTxtProgressBar(pb, i) # update progress bar
+  return(F.h)
 }
-# dur1 <- Sys.time() - start1
-# 
-# start2 <- Sys.time()
-# cl <- parallel::makeCluster(detectCores()-1)
-# doParallel::registerDoParallel(cl)
-# F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind') %dopar% {
-#   # clever matrix location decoder
-#   temp <- DecodeLocation2D(i, x.grid.size)
-#   x.grid.i <- temp[1]
-#   y.grid.i <- temp[2]
-#   
-#   output <- numeric(N.cells^2)
-#   
-#   for(j in 1:N.cells){
-#     output[((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], 0, F.x.grid[j], F.y.grid)
-#   }
-#   
-#   output
-# }
-# parallel::stopCluster(cl)
-# dur2 <- Sys.time() - start2
+
+GetF.h.parallel <- function(t){
+  library(foreach)
+  library(parallel)
+  library(doParallel)
+  
+  cl <- parallel::makeCluster(detectCores()-1)
+  doParallel::registerDoParallel(cl)
+  F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind') %dopar% {
+    # clever matrix location decoder
+    temp <- DecodeLocation2D(i, x.grid.size)
+    x.grid.i <- temp[1]
+    y.grid.i <- temp[2]
+
+    output <- numeric(N.cells^2)
+
+    for(j in 1:N.cells){
+      output[((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], t, F.x.grid[j], F.y.grid)
+    }
+
+    output
+  }
+  parallel::stopCluster(cl)
+  
+  return(F.h)
+}
+
+# Generate the F^h matrix in the notes
+F.h.0.322 <- GetF.h(0.322)
+# F.h.0.322 <- GetH.h.parallel(0.322)
+F.h.0 <- GetF.h(0)
+# F.h.0 <- GetH.h.parallel(0)
+F.h.0.4 <- GetF.h(0.4)
+# F.h.0.4 <- GetH.h.parallel(0.4)
 
 p.eta.vector <- numeric(x.grid.size*y.grid.size)
 for(i in 1:x.grid.size){
   p.eta.vector[((i-1)*x.grid.size+1):(i*x.grid.size)] <- p.eta[i, ]
 }
 
-delta <- 1e-8
+delta <- 1e-7
 
-operator.inverted <- t(F.h) %*% inv(F.h %*% t(F.h) + delta*diag(x.grid.size^2)) # equation 75 of notes
+operator.inverted <- t(F.h.0.322) %*% inv(F.h.0 %*% t(F.h.0) + delta*diag(x.grid.size^2)) # equation 75 of notes
 solution.vector <- operator.inverted %*% as.matrix(p.eta.vector)
 # now convert back to a matrix
 solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
