@@ -195,11 +195,11 @@ GetF.h.parallel <- function(t){
 
 # Generate the F^h matrix in the notes
 F.h.0.322 <- GetF.h(0.322)
-# F.h.0.322 <- GetH.h.parallel(0.322)
+# F.h.0.322 <- GetF.h.parallel(0.322)
 F.h.0 <- GetF.h(0)
-# F.h.0 <- GetH.h.parallel(0)
+# F.h.0 <- GetF.h.parallel(0)
 F.h.0.4 <- GetF.h(0.4)
-# F.h.0.4 <- GetH.h.parallel(0.4)
+# F.h.0.4 <- GetF.h.parallel(0.4)
 
 p.eta.vector <- numeric(x.grid.size*y.grid.size)
 for(i in 1:x.grid.size){
