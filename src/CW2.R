@@ -125,7 +125,7 @@ GreensFunction <- function(x1, y1, t, x2, y2, N.max=18, M.max=FALSE, c=0.5){
   
   for(n in 1:N.max){
     for(m in 1:M.max){
-      gf <- gf + v.n.m(n, m, x1, y1)*v.n.m(n, m, x2, y2)/cos(c*t*pi*sqrt(n^2 + m^2))
+      gf <- gf + v.n.m(n, m, x1, y1)*v.n.m(n, m, x2, y2)*cos(c*t*pi*sqrt(n^2 + m^2))
     }
   }
   
@@ -196,9 +196,9 @@ GetF.h.parallel <- function(t){
 # Generate the F^h matrix in the notes
 F.h.0.322 <- GetF.h(0.322)
 # F.h.0.322 <- GetF.h.parallel(0.322)
-F.h.0 <- GetF.h(0)
+#F.h.0 <- GetF.h(0)
 # F.h.0 <- GetF.h.parallel(0)
-F.h.0.4 <- GetF.h(0.4)
+#F.h.0.4 <- GetF.h(0.4)
 # F.h.0.4 <- GetF.h.parallel(0.4)
 
 p.eta.vector <- numeric(x.grid.size*y.grid.size)
@@ -208,7 +208,7 @@ for(i in 1:x.grid.size){
 
 delta <- 1e-7
 
-operator.inverted <- t(F.h.0.322) %*% inv(F.h.0 %*% t(F.h.0) + delta*diag(x.grid.size^2)) # equation 75 of notes
+operator.inverted <- t(F.h.0.322) %*% inv(F.h.0.322 %*% t(F.h.0.322) + delta*diag(x.grid.size^2)) # equation 75 of notes
 solution.vector <- operator.inverted %*% as.matrix(p.eta.vector)
 # now convert back to a matrix
 solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
