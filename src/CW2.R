@@ -5,15 +5,23 @@ source("include/GPFunctions2D.R")
 
 raw.data <- read.delim("data/Data_groupB.txt", header=FALSE)
 x.grid <- unique(raw.data$V1)
-x.grid <- c(0, x.grid, 1)
+#x.grid <- c(0, x.grid, 1)
 x.grid.size <- length(x.grid)
 y.grid <- unique(raw.data$V2)
-y.grid <- c(0, y.grid, 1)
+#y.grid <- c(0, y.grid, 1)
 y.grid.size <- length(y.grid)
 p.eta <- matrix(0, nrow=x.grid.size, ncol=y.grid.size)
-for(i in 2:(x.grid.size-1)){
-  for(j in 2:(y.grid.size-1)){
-    p.eta[i, j] <- raw.data$V3[30*((i-1)-1) + (j-1)]
+if(x.grid.size == 32){
+  for(i in 2:(x.grid.size-1)){
+    for(j in 2:(y.grid.size-1)){
+      p.eta[i, j] <- raw.data$V3[30*((i-1)-1) + (j-1)]
+    }
+  }
+}else{
+  for(i in 1:x.grid.size){
+    for(j in 1:y.grid.size){
+      p.eta[i, j] <- raw.data$V3[30*(i-1) + (j)]
+    }
   }
 }
 
@@ -174,7 +182,7 @@ GetF.h.parallel <- function(t){
   
   cl <- parallel::makeCluster(detectCores()-1)
   doParallel::registerDoParallel(cl)
-  F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind') %dopar% {
+  F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind', .export = ls(globalenv())) %dopar% {
     # clever matrix location decoder
     temp <- DecodeLocation2D(i, x.grid.size)
     x.grid.i <- temp[1]
@@ -226,7 +234,7 @@ fields::image.plot(F.x.grid, F.y.grid, solution)
 
 # prior is GP with flat mean and Matern covariance
 f.prior <- matrix(0.5, nrow=N.cells^2, ncol=1)
-C.prior <- GenerateC(N.cells^2, N.cells, sigma2=0.5, nu=0.5, tau=1) # THIS IS SLOW, ONLY RUN ME ONCE
+C.prior <- GenerateC(N.cells^2, N.cells, sigma2=0.1, nu=1.5, tau=1) # THIS IS SLOW, ONLY RUN ME ONCE
 
 A.temp <- C.prior %*% t(F.h.0.322) %*% inv(F.h.0.322 %*% C.prior %*% t(F.h.0.322) + 0.01^2*diag(x.grid.size*y.grid.size))
 f.pos <- f.prior + A.temp %*% (p.eta.vector - F.h.0.322 %*% f.prior)
@@ -243,9 +251,9 @@ fig
 
 # This is the variance of the posterior distribution
 # These values should be positive... what has gone wrong? :(
-fields::image.plot(F.x.grid, F.y.grid, variance.matrix)
+fields::image.plot(F.x.grid, F.y.grid, sqrt(-variance.matrix))
 
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=variance.matrix) %>% add_surface()
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=sqrt(-variance.matrix)) %>% add_surface()
 fig
 
 
