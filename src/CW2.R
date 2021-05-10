@@ -201,15 +201,15 @@ F.h.0.322 <- GetF.h(0.322)
 #F.h.0.4 <- GetF.h(0.4)
 # F.h.0.4 <- GetF.h.parallel(0.4)
 
-p.eta.vector <- numeric(x.grid.size*y.grid.size)
+p.eta.vector <- matrix(0, nrow=x.grid.size*y.grid.size, ncol=1)
 for(i in 1:x.grid.size){
-  p.eta.vector[((i-1)*x.grid.size+1):(i*x.grid.size)] <- p.eta[i, ]
+  p.eta.vector[((i-1)*x.grid.size+1):(i*x.grid.size), 1] <- p.eta[i, ]
 }
 
-delta <- 1e-7
+delta <- 1e-4
 
 operator.inverted <- t(F.h.0.322) %*% inv(F.h.0.322 %*% t(F.h.0.322) + delta*diag(x.grid.size^2)) # equation 75 of notes
-solution.vector <- operator.inverted %*% as.matrix(p.eta.vector)
+solution.vector <- operator.inverted %*% p.eta.vector
 # now convert back to a matrix
 solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
 
@@ -222,23 +222,31 @@ fields::image.plot(F.x.grid, F.y.grid, solution)
 
 
 ################################################
-# This all needs flattening... gulp
-# This is the Bayesian steps, don't run this bit yet
+# These are the Bayesian steps
 
-f.prior <- matrix(0.5, nrow=N.cells, ncol=N.cells)
-C.prior <- GenerateC(50^2, 50, sigma2=0.5, nu=0.5, tau=1) # THIS IS SLOW
+# prior is GP with flat mean and Matern covariance
+f.prior <- matrix(0.5, nrow=N.cells^2, ncol=1)
+C.prior <- GenerateC(N.cells^2, N.cells, sigma2=0.5, nu=0.5, tau=1) # THIS IS SLOW, ONLY RUN ME ONCE
 
-A.temp <- C.prior %*% t(F.h) %*% inv(F.h %*% C.prior %*% t(F.h) + 0.01^2*diag(N.cells))
-f.pos <- f.prior + A.temp %*% (data.interpolated - F.h %*% f.prior)
-C.pos <- C.prior - A.temp %*% F.h %*% C.prior
+A.temp <- C.prior %*% t(F.h.0.322) %*% inv(F.h.0.322 %*% C.prior %*% t(F.h.0.322) + 0.01^2*diag(x.grid.size*y.grid.size))
+f.pos <- f.prior + A.temp %*% (p.eta.vector - F.h.0.322 %*% f.prior)
+f.pos.matrix <- matrix(f.pos, nrow=N.cells, byrow=TRUE)
+C.pos <- C.prior - A.temp %*% F.h.0.322 %*% C.prior
+variance.matrix <- matrix(diag(C.pos), nrow=N.cells, byrow=TRUE)
 
+# this is the posterior distribution
+fields::image.plot(F.x.grid, F.y.grid, f.pos.matrix)
 
-fields::image.plot(F.x.grid, F.y.grid, f.pos)
-
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=f.pos) %>% add_surface()
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=f.pos.matrix) %>% add_surface()
 fig
 
 
+# This is the variance of the posterior distribution
+# These values should be positive... what has gone wrong? :(
+fields::image.plot(F.x.grid, F.y.grid, variance.matrix)
+
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=variance.matrix) %>% add_surface()
+fig
 
 
 
