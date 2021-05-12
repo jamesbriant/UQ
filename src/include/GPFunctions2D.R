@@ -90,7 +90,7 @@ GenerateC <- function(M, I, sigma2=1, nu=0.5, tau=1, Lx=1, Ly=1){
     }
   }
   
-  return(A+t(A))
+  return(A + t(A) + sigma2*diag(M))
 }
 
 SolveEigenProblem <- function(C, k=50){
