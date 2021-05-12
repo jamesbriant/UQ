@@ -142,7 +142,7 @@ GreensFunction <- function(x1, y1, t, x2, y2, N.max=18, M.max=FALSE, c=0.5){
 
 ##############
 # Set up the location of the centre of the cells
-N.cells <- 50 # Number of cells in x and y-direction
+N.cells <- 80 # Number of cells in x and y-direction
 
 # Set up the x-direction discretisation
 F.x.grid <- seq(0, 1, length=N.cells+1)[1:N.cells]
@@ -180,7 +180,9 @@ GetF.h.parallel <- function(t){
   library(parallel)
   library(doParallel)
   
-  cl <- parallel::makeCluster(detectCores()-1)
+  core.count <- detectCores()
+  cl <- parallel::makeCluster(core.count-1)
+  print(paste0("using ", core.count-1, " CPU cores."))
   doParallel::registerDoParallel(cl)
   F.h <- foreach(i = 1:(x.grid.size*y.grid.size), .combine='rbind', .export = ls(globalenv())) %dopar% {
     # clever matrix location decoder
@@ -214,14 +216,16 @@ for(i in 1:x.grid.size){
   p.eta.vector[((i-1)*x.grid.size+1):(i*x.grid.size), 1] <- p.eta[i, ]
 }
 
-delta <- 1e-4
+# This part below isn't needed, see Bayesian approach instead
 
-operator.inverted <- t(F.h.0.322) %*% inv(F.h.0.322 %*% t(F.h.0.322) + delta*diag(x.grid.size^2)) # equation 75 of notes
-solution.vector <- operator.inverted %*% p.eta.vector
-# now convert back to a matrix
-solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
-
-fields::image.plot(F.x.grid, F.y.grid, solution)
+# delta <- 1e-4
+# 
+# operator.inverted <- t(F.h.0.322) %*% inv(F.h.0.322 %*% t(F.h.0.322) + delta*diag(x.grid.size^2)) # equation 75 of notes
+# solution.vector <- operator.inverted %*% p.eta.vector
+# # now convert back to a matrix
+# solution <- matrix(solution.vector, nrow=F.x.grid.size, ncol=F.y.grid.size, byrow=TRUE)
+# 
+# fields::image.plot(F.x.grid, F.y.grid, solution)
 
 #fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=solution) %>% add_surface()
 #fig
@@ -233,8 +237,8 @@ fields::image.plot(F.x.grid, F.y.grid, solution)
 # These are the Bayesian steps
 
 # prior is GP with flat mean and Matern covariance
-f.prior <- matrix(0.5, nrow=N.cells^2, ncol=1)
-C.prior <- GenerateC(N.cells^2, N.cells, sigma2=0.1, nu=1.5, tau=1) # THIS IS SLOW, ONLY RUN ME ONCE
+f.prior <- matrix(0.2, nrow=N.cells^2, ncol=1)
+C.prior <- GenerateC(N.cells^2, N.cells, sigma2=0.1, nu=2, tau=0.1) # THIS IS SLOW, ONLY RUN ME ONCE
 
 A.temp <- C.prior %*% t(F.h.0.322) %*% inv(F.h.0.322 %*% C.prior %*% t(F.h.0.322) + 0.01^2*diag(x.grid.size*y.grid.size))
 f.pos <- f.prior + A.temp %*% (p.eta.vector - F.h.0.322 %*% f.prior)
@@ -250,10 +254,9 @@ fig
 
 
 # This is the variance of the posterior distribution
-# These values should be positive... what has gone wrong? :(
-fields::image.plot(F.x.grid, F.y.grid, sqrt(-variance.matrix))
+fields::image.plot(F.x.grid, F.y.grid, sqrt(variance.matrix))
 
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=sqrt(-variance.matrix)) %>% add_surface()
+fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=sqrt(variance.matrix)) %>% add_surface()
 fig
 
 
