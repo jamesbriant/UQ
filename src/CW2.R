@@ -350,3 +350,66 @@ fields::image.plot(F.x.grid.border, F.y.grid.border, output)
 #pracma::interp2(F.x.grid.border, F.y.grid.border, t(output), 0.495, 0.495) # used to check the output is the same as MasterBuilderEmmet2(). It was the same!
 
 MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
+
+
+
+##################
+
+GetF.h.forward <- function(t){
+  F.h <- matrix(0, nrow=(N.cells+2)^2, ncol=(N.cells+2)^2) # matrix of Green's functions evaluations
+  pb <- txtProgressBar(min = 0, max = (N.cells+2)^2, style = 3) # progress bar
+  for(i in 1:((N.cells+2)^2)){
+    # clever matrix location decoder
+    temp <- DecodeLocation2D(i, (N.cells+2))
+    F.x.grid.i <- temp[1]
+    F.y.grid.i <- temp[2]
+    
+    for(j in 1:(N.cells+2)){
+      F.h[i, ((j-1)*(N.cells+2)+1):(j*(N.cells+2))] <- h.x*h.y*GreensFunction(F.x.grid.border[F.x.grid.i], F.y.grid.border[F.y.grid.i], t, F.x.grid.border[j], F.y.grid.border)
+    }
+    
+    setTxtProgressBar(pb, i) # update progress bar
+  }
+  
+  return(F.h)
+}
+
+GetF.h.forward.parallel <- function(t){
+  library(foreach)
+  library(parallel)
+  library(doParallel)
+  
+  core.count <- detectCores()
+  cl <- parallel::makeCluster(core.count-1)
+  print(paste0("using ", core.count-1, " CPU cores."))
+  doParallel::registerDoParallel(cl)
+  F.h <- foreach(i = 1:((N.cells+2)^2), .combine='rbind', .export = ls(globalenv())) %dopar% {
+    # clever matrix location decoder
+    temp <- DecodeLocation2D(i, (N.cells+2))
+    F.x.grid.i <- temp[1]
+    F.y.grid.i <- temp[2]
+    
+    output <- numeric((N.cells+2)^2)
+    
+    for(j in 1:(N.cells+2)){
+      output[((j-1)*(N.cells+2)+1):(j*(N.cells+2))] <- h.x*h.y*GreensFunction(F.x.grid.border[F.x.grid.i], F.y.grid.border[F.y.grid.i], t, F.x.grid.border[j], F.y.grid.border)
+    }
+    
+    output
+  }
+  parallel::stopCluster(cl)
+  
+  return(F.h)
+}
+
+
+f.pos.0.border <- matrix(0, nrow=(N.cells+2)*(N.cells+2), ncol=1)
+for(i in 1:(F.x.grid.size+2)){
+  f.pos.0.border[((i-1)*(F.x.grid.size+2)+1):(i*(F.x.grid.size+2)), 1] <- f.pos.matrix.0.border[i, ]
+}
+
+#F.h.forward <- GetF.h.forward(0.5) # This function is horribly slow, but does not require 
+u.0.5.vector <- F.h.forward %*% f.pos.0.border
+u.0.5 <- matrix(u.0.5.vector, nrow=N.cells+2, byrow=TRUE)
+fields::image.plot(F.x.grid.border, F.y.grid.border, u.0.5)
+
