@@ -39,38 +39,6 @@ beta.n.m <- function(n, m, Lx=1, Ly=1){
   return(((n/Lx)^2 + (m/Ly)^2)*pi^2)
 }
 
-GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSize=5000){
-  # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
-  # REQUIRES `pracma` to be installed!
-
-  #################
-  # Find Wnm
-  
-  if(identical(M, FALSE)){
-    M = N
-  }
-
-  W.n.m <- matrix(0, nrow=N, ncol=M)
-  
-  for(n in 1:N){
-    for(m in 1:M){
-      # calculate the spectral coefficients
-      W.n.m[n, m] <- 1/cos(sqrt(beta.n.m(n, m))*0.322*c)*
-        MonteCarlo2D(
-          user.func=function(x, y){
-            pracma::interp2(x.grid, y.grid, t(p.eta), x, y)*
-            v.n.m(n, m, x, y)
-          }, 
-          N=MonteCarloSize
-        )$mean
-    }
-  }
-  
-  return(W.n.m)
-}
-
-
-
 # N.max <- 18
 # M.max <- N.max
 # W.n.m <- GetWnm(N.max, x.grid, y.grid, p.eta, MonteCarloSize=20000) # may take a little while to load...
@@ -262,11 +230,123 @@ fig
 
 
 
+################################################################################
+# Finding the displacement at Lego Town
+
+GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSize=5000, silent=TRUE){
+  # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
+  # REQUIRES `pracma` to be installed!
+  
+  #################
+  # Find Wnm
+  
+  if(identical(M, FALSE)){
+    M = N
+  }
+  
+  W.n.m <- matrix(0, nrow=N, ncol=M)
+  
+  for(n in 1:N){
+    if(silent==FALSE){
+      print(n)
+    }
+    for(m in 1:M){
+      # calculate the spectral coefficients
+      W.n.m[n, m] <- MonteCarlo2D(
+                      user.func=function(x, y){
+                        pracma::interp2(x.grid, y.grid, t(data.matrix), x, y)*
+                          v.n.m(n, m, x, y)
+                        }, 
+                      N=MonteCarloSize
+                      )$mean
+    }
+  }
+  
+  return(W.n.m)
+}
+
+GetTimeToLegoCity <- function(x.start, y.start, c=0.5){
+  d <- sqrt((0.495 - x.start)^2 + (0.495 - y.start)^2)
+  return(d/c)
+}
+
+MasterBuilderEmmet <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
+  # This function builds the system state whenever the wave is expected to hit Lego City
+  
+  # Find the epicentre of the earthquake
+  centre.location.encoded <- which(initial.condition==max(initial.condition))
+  centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
+  centre.location.x <- F.x.grid[centre.location.decoded[1]]
+  centre.location.y <- F.y.grid[centre.location.decoded[2]]
+  
+  # Find the time the epicentre reaches Lego City
+  t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+  
+  # build the entire domain
+  output <- matrix(0, nrow=length(F.x.grid), ncol=length(F.y.grid))
+  for(n in 1:dim(W)[1]){
+    for(m in 1:dim(W)[2]){
+      for(i in 1:length(F.x.grid)){
+        output[i, ] <- output[i, ] + W[n, m]*v.n.m(n, m, F.x.grid[i], F.y.grid)*cos(pi*c*t*sqrt(n^2 + m^2))
+      }
+    }
+  }
+  
+  # return the displacement in the domain
+  return(output)
+}
+
+MasterBuilderEmmet2 <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
+  # This is an improved version of MasterBuilderEmmet(), but only returns the value at Lego City.
+  # The rest of the domain is not calculated
+  
+  # Find the epicentre of the earthquake
+  centre.location.encoded <- which(initial.condition==max(initial.condition))
+  centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
+  centre.location.x <- F.x.grid[centre.location.decoded[1]]
+  centre.location.y <- F.y.grid[centre.location.decoded[2]]
+  
+  # Find the time the epicentre reaches Lego City
+  t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+  
+  # Find the F.x.grid locations surrounding Lego City. We interpolate later
+  x.a <- max(which(F.x.grid < 0.495))
+  x.b <- min(which(F.x.grid > 0.495))
+  y.a <- max(which(F.y.grid < 0.495))
+  y.b <- min(which(F.y.grid > 0.495))
+  
+  # build the region of interest
+  output <- matrix(0, nrow=2, ncol=2)
+  for(n in 1:dim(W)[1]){
+    for(m in 1:dim(W)[2]){
+      temp <- W[n, m]*cos(pi*c*t*sqrt(n^2 + m^2))
+      output[1, ] <- output[1, ] + temp*v.n.m(n, m, F.x.grid[x.a], F.y.grid[y.a:y.b])
+      output[2, ] <- output[2, ] + temp*v.n.m(n, m, F.x.grid[x.b], F.y.grid[y.a:y.b])
+    }
+  }
+  
+  # interpolate the displacement at Lego City and return
+  return(pracma::interp2(F.x.grid[x.a:x.b], F.y.grid[y.a:y.b], t(output), 0.495, 0.495))
+}
+
+# add on the border for interpolation later
+F.x.grid.border <- c(0, F.x.grid, 1)
+F.y.grid.border <- c(0, F.y.grid, 1)
+f.pos.matrix.0.border <- matrix(0, nrow=F.x.grid.size+2, ncol=F.y.grid.size+2)
+f.pos.matrix.0.border[2:(F.x.grid.size+1), 2:(F.x.grid.size+1)] <- f.pos.matrix
+
+N.max <- 18 # check this value!
+M.max <- N.max
+W.n.m <- GetWnm(N.max, 
+                F.x.grid.border, 
+                F.y.grid.border, 
+                f.pos.matrix.0.border, 
+                MonteCarloSize=10000,
+                silent=FALSE) # may take a little while to load...
 
 
+output <- MasterBuilderEmmet(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
+fields::image.plot(F.x.grid.border, F.y.grid.border, output)
+#pracma::interp2(F.x.grid.border, F.y.grid.border, t(output), 0.495, 0.495) # used to check the output is the same as MasterBuilderEmmet2(). It was the same!
 
-
-
-
-
-
+MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
