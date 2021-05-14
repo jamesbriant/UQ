@@ -110,7 +110,7 @@ GreensFunction <- function(x1, y1, t, x2, y2, N.max=18, M.max=FALSE, c=0.5){
 
 ##############
 # Set up the location of the centre of the cells
-N.cells <- 80 # Number of cells in x and y-direction
+N.cells <- 50 # Number of cells in x and y-direction
 
 # Set up the x-direction discretisation
 F.x.grid <- seq(0, 1, length=N.cells+1)[1:N.cells]
@@ -358,16 +358,16 @@ MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.bord
 # Propagate forwards samples from N(f.pos, C.pos) using F.h.forward
 
 GetF.h.forward <- function(t){
-  F.h <- matrix(0, nrow=(N.cells+2)^2, ncol=(N.cells+2)^2) # matrix of Green's functions evaluations
-  pb <- txtProgressBar(min = 0, max = (N.cells+2)^2, style = 3) # progress bar
-  for(i in 1:((N.cells+2)^2)){
+  F.h <- matrix(0, nrow=(N.cells)^2, ncol=(N.cells)^2) # matrix of Green's functions evaluations
+  pb <- txtProgressBar(min = 0, max = (N.cells)^2, style = 3) # progress bar
+  for(i in 1:((N.cells)^2)){
     # clever matrix location decoder
-    temp <- DecodeLocation2D(i, (N.cells+2))
+    temp <- DecodeLocation2D(i, (N.cells))
     F.x.grid.i <- temp[1]
     F.y.grid.i <- temp[2]
     
-    for(j in 1:(N.cells+2)){
-      F.h[i, ((j-1)*(N.cells+2)+1):(j*(N.cells+2))] <- h.x*h.y*GreensFunction(F.x.grid.border[F.x.grid.i], F.y.grid.border[F.y.grid.i], t, F.x.grid.border[j], F.y.grid.border)
+    for(j in 1:(N.cells)){
+      F.h[i, ((j-1)*(N.cells)+1):(j*(N.cells))] <- h.x*h.y*GreensFunction(F.x.grid[F.x.grid.i], F.y.grid[F.y.grid.i], t, F.x.grid[j], F.y.grid)
     }
     
     setTxtProgressBar(pb, i) # update progress bar
@@ -385,16 +385,16 @@ GetF.h.forward.parallel <- function(t){
   cl <- parallel::makeCluster(core.count-1)
   print(paste0("using ", core.count-1, " CPU cores."))
   doParallel::registerDoParallel(cl)
-  F.h <- foreach(i = 1:((N.cells+2)^2), .combine='rbind', .export = ls(globalenv())) %dopar% {
+  F.h <- foreach(i = 1:((N.cells)^2), .combine='rbind', .export = ls(globalenv())) %dopar% {
     # clever matrix location decoder
-    temp <- DecodeLocation2D(i, (N.cells+2))
+    temp <- DecodeLocation2D(i, (N.cells))
     F.x.grid.i <- temp[1]
     F.y.grid.i <- temp[2]
     
-    output <- numeric((N.cells+2)^2)
+    output <- numeric((N.cells)^2)
     
-    for(j in 1:(N.cells+2)){
-      output[((j-1)*(N.cells+2)+1):(j*(N.cells+2))] <- h.x*h.y*GreensFunction(F.x.grid.border[F.x.grid.i], F.y.grid.border[F.y.grid.i], t, F.x.grid.border[j], F.y.grid.border)
+    for(j in 1:(N.cells)){
+      output[((j-1)*(N.cells)+1):(j*(N.cells))] <- h.x*h.y*GreensFunction(F.x.grid[F.x.grid.i], F.y.grid[F.y.grid.i], t, F.x.grid[j], F.y.grid)
     }
     
     output
@@ -404,18 +404,46 @@ GetF.h.forward.parallel <- function(t){
   return(F.h)
 }
 
+# This is a bad way of doing this... what if N.cells changes
+F.h.forward.0.55 <- GetF.h.forward(0.55227) # This function is horribly slow, but only needs to be done once
+F.h.forward.0.52 <- GetF.h.forward(0.55232) # This function is horribly slow, but only needs to be done once
+F.h.forward.0.58 <- GetF.h.forward(0.57983) # This function is horribly slow, but only needs to be done once
 
-f.pos.0.border <- matrix(0, nrow=(N.cells+2)*(N.cells+2), ncol=1)
-for(i in 1:(F.x.grid.size+2)){
-  f.pos.0.border[((i-1)*(F.x.grid.size+2)+1):(i*(F.x.grid.size+2)), 1] <- f.pos.matrix.0.border[i, ]
+F.h.forward.parallel.0.55 <- GetF.h.forward.parallel(0.55227) # This function is horribly slow, but only needs to be done once
+F.h.forward.parallel.0.52 <- GetF.h.forward.parallel(0.55232) # This function is horribly slow, but only needs to be done once
+F.h.forward.parallel.0.58 <- GetF.h.forward.parallel(0.57983) # This function is horribly slow, but only needs to be done once
+
+KL.decomp <- SolveEigenProblem(C.pos) # this is very slow
+sample.count <- 15000
+pos.samples <- GenerateSamples(sample.count, KL.decomp, f.base=f.pos.matrix)
+
+lego.city.displacements <- numeric(sample.count)
+times <- numeric(sample.count)
+for(i in 1:sample.count){
+  # Find the epicentre of the earthquake
+  centre.location.encoded <- which(pos.samples[[i]]==max(pos.samples[[i]]))
+  centre.location.decoded <- DecodeLocation2D(centre.location.encoded, N.cells)
+  centre.location.x <- F.x.grid[centre.location.decoded[1]]
+  centre.location.y <- F.y.grid[centre.location.decoded[2]]
+  
+  # Find the time the epicentre reaches Lego City
+  t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+  times[i] <- t
+  
+  
+  # DO NOT USE F.h.forward HERE. THIS FUNCTION SHOULD BE SPECIFIC TO EACH SAMPLE
+  #u.lego.city.i <- matrix(F.h.forward %*% matrix(pos.samples[[i]], ncol=1), nrow=N.cells, byrow=TRUE)
+  
+  # interpolate the location for lego city
+  #lego.city.displacements[i] <- pracma::interp2(F.x.grid, F.y.grid, t(u.lego.city.i), 0.495, 0.495)
 }
+hist(lego.city.displacements, freq=FALSE)
+lines(seq(0, 0.2, length=200), dnorm(seq(0, 0.2, length=200), mean(lego.city.displacements), sd=sqrt(var(lego.city.displacements))), col="red")
+sum(lego.city.displacements >= 0.12)/sample.count # = probability of buildings collapsing
 
-F.h.forward <- GetF.h.forward(0.5) # This function is horribly slow, but only needs to be done once
-#F.h.forward <- GetF.h.forward.parallel(0.5) # This function is horribly slow, but only needs to be done once
-isSymmetric(F.h.forward)
-u.0.5.vector <- F.h.forward %*% f.pos.0.border
-u.0.5 <- matrix(u.0.5.vector, nrow=N.cells+2, byrow=TRUE)
-fields::image.plot(F.x.grid.border, F.y.grid.border, u.0.5)
+# This is used to investigate which times to use for F.h(t)
+#hist(times)
+#unique(times)
 
 
 
@@ -423,9 +451,9 @@ fields::image.plot(F.x.grid.border, F.y.grid.border, u.0.5)
 # Approach number 3
 # This doesn't work, I don't know why. Stick with method 3
 
-F.h.0.422 <- GetF.h(0.422)
-u.0.1.method3.vector <- t(F.h.0.422) %*% p.eta.vector
-u.0.1.method3 <- matrix(u.0.1.method3.vector, nrow=N.cells, byrow=TRUE)
-fields::image.plot(F.x.grid, F.y.grid, u.0.1.method3)
+# F.h.0.422 <- GetF.h(0.422)
+# u.0.1.method3.vector <- t(F.h.0.422) %*% p.eta.vector
+# u.0.1.method3 <- matrix(u.0.1.method3.vector, nrow=N.cells, byrow=TRUE)
+# fields::image.plot(F.x.grid, F.y.grid, u.0.1.method3)
 
 
