@@ -413,3 +413,14 @@ u.0.5.vector <- F.h.forward %*% f.pos.0.border
 u.0.5 <- matrix(u.0.5.vector, nrow=N.cells+2, byrow=TRUE)
 fields::image.plot(F.x.grid.border, F.y.grid.border, u.0.5)
 
+
+
+###########################################################################
+# Approach number 3
+
+F.h.0.422 <- GetF.h(0.422)
+u.0.1.method3.vector <- t(F.h.0.422) %*% p.eta.vector
+u.0.1.method3 <- matrix(u.0.1.method3.vector, nrow=N.cells, byrow=TRUE)
+fields::image.plot(F.x.grid, F.y.grid, u.0.1.method3)
+
+
