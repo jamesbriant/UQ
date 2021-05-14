@@ -157,13 +157,13 @@ GetF.h.parallel <- function(t){
     temp <- DecodeLocation2D(i, x.grid.size)
     x.grid.i <- temp[1]
     y.grid.i <- temp[2]
-
+    
     output <- numeric(N.cells^2)
-
+    
     for(j in 1:N.cells){
       output[((j-1)*N.cells+1):(j*N.cells)] <- h.x*h.y*GreensFunction(x.grid[x.grid.i], y.grid[y.grid.i], t, F.x.grid[j], F.y.grid)
     }
-
+    
     output
   }
   parallel::stopCluster(cl)
@@ -173,7 +173,7 @@ GetF.h.parallel <- function(t){
 
 # Generate the F^h matrix in the notes
 F.h.0.322 <- GetF.h(0.322)
-# F.h.0.322 <- GetF.h.parallel(0.322)
+#F.h.0.322 <- GetF.h.parallel(0.322)
 #F.h.0 <- GetF.h(0)
 # F.h.0 <- GetF.h.parallel(0)
 #F.h.0.4 <- GetF.h(0.4)
@@ -217,15 +217,15 @@ variance.matrix <- matrix(diag(C.pos), nrow=N.cells, byrow=TRUE)
 # this is the posterior distribution
 fields::image.plot(F.x.grid, F.y.grid, f.pos.matrix)
 
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=f.pos.matrix) %>% add_surface()
-fig
+#fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=f.pos.matrix) %>% add_surface()
+#fig
 
 
 # This is the variance of the posterior distribution
 fields::image.plot(F.x.grid, F.y.grid, sqrt(variance.matrix))
 
-fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=sqrt(variance.matrix)) %>% add_surface()
-fig
+#fig <- plot_ly(x=F.x.grid, y=F.y.grid, z=sqrt(variance.matrix)) %>% add_surface()
+#fig
 
 
 
@@ -253,12 +253,12 @@ GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSiz
     for(m in 1:M){
       # calculate the spectral coefficients
       W.n.m[n, m] <- MonteCarlo2D(
-                      user.func=function(x, y){
-                        pracma::interp2(x.grid, y.grid, t(data.matrix), x, y)*
-                          v.n.m(n, m, x, y)
-                        }, 
-                      N=MonteCarloSize
-                      )$mean
+        user.func=function(x, y){
+          pracma::interp2(x.grid, y.grid, t(data.matrix), x, y)*
+            v.n.m(n, m, x, y)
+        }, 
+        N=MonteCarloSize
+      )$mean
     }
   }
   
@@ -353,7 +353,9 @@ MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.bord
 
 
 
-##################
+########################
+# Method 2
+# Propagate forwards samples from N(f.pos, C.pos) using F.h.forward
 
 GetF.h.forward <- function(t){
   F.h <- matrix(0, nrow=(N.cells+2)^2, ncol=(N.cells+2)^2) # matrix of Green's functions evaluations
@@ -408,15 +410,18 @@ for(i in 1:(F.x.grid.size+2)){
   f.pos.0.border[((i-1)*(F.x.grid.size+2)+1):(i*(F.x.grid.size+2)), 1] <- f.pos.matrix.0.border[i, ]
 }
 
-#F.h.forward <- GetF.h.forward(0.5) # This function is horribly slow, but does not require 
+F.h.forward <- GetF.h.forward(0.5) # This function is horribly slow, but only needs to be done once
+#F.h.forward <- GetF.h.forward.parallel(0.5) # This function is horribly slow, but only needs to be done once
+isSymmetric(F.h.forward)
 u.0.5.vector <- F.h.forward %*% f.pos.0.border
 u.0.5 <- matrix(u.0.5.vector, nrow=N.cells+2, byrow=TRUE)
 fields::image.plot(F.x.grid.border, F.y.grid.border, u.0.5)
 
 
 
-###########################################################################
+######################################
 # Approach number 3
+# This doesn't work, I don't know why. Stick with method 3
 
 F.h.0.422 <- GetF.h(0.422)
 u.0.1.method3.vector <- t(F.h.0.422) %*% p.eta.vector
