@@ -233,129 +233,138 @@ fields::image.plot(F.x.grid, F.y.grid, sqrt(variance.matrix))
 ################################################################################
 # Finding the displacement at Lego Town
 
-GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSize=5000, silent=TRUE){
-  # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
-  # REQUIRES `pracma` to be installed!
-  
-  #################
-  # Find Wnm
-  
-  if(identical(M, FALSE)){
-    M = N
-  }
-  
-  W.n.m <- matrix(0, nrow=N, ncol=M)
-  
-  for(n in 1:N){
-    if(silent==FALSE){
-      print(n)
-    }
-    for(m in 1:M){
-      # calculate the spectral coefficients
-      W.n.m[n, m] <- MonteCarlo2D(
-        user.func=function(x, y){
-          pracma::interp2(x.grid, y.grid, t(data.matrix), x, y)*
-            v.n.m(n, m, x, y)
-        }, 
-        N=MonteCarloSize
-      )$mean
-    }
-  }
-  
-  return(W.n.m)
-}
+#######################
+# Method 1
+# This is not used due to the random nature of the estimates of the Wnm terms.
 
-GetTimeToLegoCity <- function(x.start, y.start, c=0.5){
-  d <- sqrt((0.495 - x.start)^2 + (0.495 - y.start)^2)
-  return(d/c)
-}
-
-MasterBuilderEmmet <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
-  # This function builds the system state whenever the wave is expected to hit Lego City
-  
-  # Find the epicentre of the earthquake
-  centre.location.encoded <- which(initial.condition==max(initial.condition))
-  centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
-  centre.location.x <- F.x.grid[centre.location.decoded[1]]
-  centre.location.y <- F.y.grid[centre.location.decoded[2]]
-  
-  # Find the time the epicentre reaches Lego City
-  t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
-  
-  # build the entire domain
-  output <- matrix(0, nrow=length(F.x.grid), ncol=length(F.y.grid))
-  for(n in 1:dim(W)[1]){
-    for(m in 1:dim(W)[2]){
-      for(i in 1:length(F.x.grid)){
-        output[i, ] <- output[i, ] + W[n, m]*v.n.m(n, m, F.x.grid[i], F.y.grid)*cos(pi*c*t*sqrt(n^2 + m^2))
-      }
-    }
-  }
-  
-  # return the displacement in the domain
-  return(output)
-}
-
-MasterBuilderEmmet2 <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
-  # This is an improved version of MasterBuilderEmmet(), but only returns the value at Lego City.
-  # The rest of the domain is not calculated
-  
-  # Find the epicentre of the earthquake
-  centre.location.encoded <- which(initial.condition==max(initial.condition))
-  centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
-  centre.location.x <- F.x.grid[centre.location.decoded[1]]
-  centre.location.y <- F.y.grid[centre.location.decoded[2]]
-  
-  # Find the time the epicentre reaches Lego City
-  t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
-  
-  # Find the F.x.grid locations surrounding Lego City. We interpolate later
-  x.a <- max(which(F.x.grid < 0.495))
-  x.b <- min(which(F.x.grid > 0.495))
-  y.a <- max(which(F.y.grid < 0.495))
-  y.b <- min(which(F.y.grid > 0.495))
-  
-  # build the region of interest
-  output <- matrix(0, nrow=2, ncol=2)
-  for(n in 1:dim(W)[1]){
-    for(m in 1:dim(W)[2]){
-      temp <- W[n, m]*cos(pi*c*t*sqrt(n^2 + m^2))
-      output[1, ] <- output[1, ] + temp*v.n.m(n, m, F.x.grid[x.a], F.y.grid[y.a:y.b])
-      output[2, ] <- output[2, ] + temp*v.n.m(n, m, F.x.grid[x.b], F.y.grid[y.a:y.b])
-    }
-  }
-  
-  # interpolate the displacement at Lego City and return
-  return(pracma::interp2(F.x.grid[x.a:x.b], F.y.grid[y.a:y.b], t(output), 0.495, 0.495))
-}
-
-# add on the border for interpolation later
-F.x.grid.border <- c(0, F.x.grid, 1)
-F.y.grid.border <- c(0, F.y.grid, 1)
-f.pos.matrix.0.border <- matrix(0, nrow=F.x.grid.size+2, ncol=F.y.grid.size+2)
-f.pos.matrix.0.border[2:(F.x.grid.size+1), 2:(F.x.grid.size+1)] <- f.pos.matrix
-
-N.max <- 18 # check this value!
-M.max <- N.max
-W.n.m <- GetWnm(N.max, 
-                F.x.grid.border, 
-                F.y.grid.border, 
-                f.pos.matrix.0.border, 
-                MonteCarloSize=10000,
-                silent=FALSE) # may take a little while to load...
-
-
-output <- MasterBuilderEmmet(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
-fields::image.plot(F.x.grid.border, F.y.grid.border, output)
-#pracma::interp2(F.x.grid.border, F.y.grid.border, t(output), 0.495, 0.495) # used to check the output is the same as MasterBuilderEmmet2(). It was the same!
-
-MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
+# GetWnm <- function(N, x.grid, y.grid, data.matrix, c=0.5, M=FALSE, MonteCarloSize=5000, silent=TRUE){
+#   # REQUIRES `include/MonteCarloIntegration.R` to be sourced!
+#   # REQUIRES `pracma` to be installed!
+#   
+#   #################
+#   # Find Wnm
+#   
+#   if(identical(M, FALSE)){
+#     M = N
+#   }
+#   
+#   W.n.m <- matrix(0, nrow=N, ncol=M)
+#   
+#   for(n in 1:N){
+#     if(silent==FALSE){
+#       print(n)
+#     }
+#     for(m in 1:M){
+#       # calculate the spectral coefficients
+#       W.n.m[n, m] <- MonteCarlo2D(
+#         user.func=function(x, y){
+#           pracma::interp2(x.grid, y.grid, t(data.matrix), x, y)*
+#             v.n.m(n, m, x, y)
+#         }, 
+#         N=MonteCarloSize
+#       )$mean
+#     }
+#   }
+#   
+#   return(W.n.m)
+# }
+# 
+# GetTimeToLegoCity <- function(x.start, y.start, c=0.5){
+#   d <- sqrt((0.495 - x.start)^2 + (0.495 - y.start)^2)
+#   return(d/c)
+# }
+# 
+# MasterBuilderEmmet <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
+#   # This function builds the system state whenever the wave is expected to hit Lego City
+#   
+#   # Find the epicentre of the earthquake
+#   centre.location.encoded <- which(initial.condition==max(initial.condition))
+#   centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
+#   centre.location.x <- F.x.grid[centre.location.decoded[1]]
+#   centre.location.y <- F.y.grid[centre.location.decoded[2]]
+#   
+#   # Find the time the epicentre reaches Lego City
+#   t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+#   
+#   # build the entire domain
+#   output <- matrix(0, nrow=length(F.x.grid), ncol=length(F.y.grid))
+#   for(n in 1:dim(W)[1]){
+#     for(m in 1:dim(W)[2]){
+#       for(i in 1:length(F.x.grid)){
+#         output[i, ] <- output[i, ] + W[n, m]*v.n.m(n, m, F.x.grid[i], F.y.grid)*cos(pi*c*t*sqrt(n^2 + m^2))
+#       }
+#     }
+#   }
+#   
+#   # return the displacement in the domain
+#   return(output)
+# }
+# 
+# MasterBuilderEmmet2 <- function(W, initial.condition, F.x.grid, F.y.grid, c=0.5){ # I hope you've seen the Lego Movie, otherwise this function name won't mean anything :D
+#   # This is an improved version of MasterBuilderEmmet(), but only returns the value at Lego City.
+#   # The rest of the domain is not calculated
+#   
+#   # Find the epicentre of the earthquake
+#   centre.location.encoded <- which(initial.condition==max(initial.condition))
+#   centre.location.decoded <- DecodeLocation2D(centre.location.encoded, length(F.x.grid))
+#   centre.location.x <- F.x.grid[centre.location.decoded[1]]
+#   centre.location.y <- F.y.grid[centre.location.decoded[2]]
+#   
+#   # Find the time the epicentre reaches Lego City
+#   t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+#   
+#   # Find the F.x.grid locations surrounding Lego City. We interpolate later
+#   x.a <- max(which(F.x.grid < 0.495))
+#   x.b <- min(which(F.x.grid > 0.495))
+#   y.a <- max(which(F.y.grid < 0.495))
+#   y.b <- min(which(F.y.grid > 0.495))
+#   
+#   # build the region of interest
+#   output <- matrix(0, nrow=2, ncol=2)
+#   for(n in 1:dim(W)[1]){
+#     for(m in 1:dim(W)[2]){
+#       temp <- W[n, m]*cos(pi*c*t*sqrt(n^2 + m^2))
+#       output[1, ] <- output[1, ] + temp*v.n.m(n, m, F.x.grid[x.a], F.y.grid[y.a:y.b])
+#       output[2, ] <- output[2, ] + temp*v.n.m(n, m, F.x.grid[x.b], F.y.grid[y.a:y.b])
+#     }
+#   }
+#   
+#   # interpolate the displacement at Lego City and return
+#   return(pracma::interp2(F.x.grid[x.a:x.b], F.y.grid[y.a:y.b], t(output), 0.495, 0.495))
+# }
+# 
+# # add on the border for interpolation later
+# F.x.grid.border <- c(0, F.x.grid, 1)
+# F.y.grid.border <- c(0, F.y.grid, 1)
+# f.pos.matrix.0.border <- matrix(0, nrow=F.x.grid.size+2, ncol=F.y.grid.size+2)
+# f.pos.matrix.0.border[2:(F.x.grid.size+1), 2:(F.x.grid.size+1)] <- f.pos.matrix
+# 
+# N.max <- 18 # check this value!
+# M.max <- N.max
+# W.n.m <- GetWnm(N.max, 
+#                 F.x.grid.border, 
+#                 F.y.grid.border, 
+#                 f.pos.matrix.0.border, 
+#                 MonteCarloSize=10000,
+#                 silent=FALSE) # may take a little while to load...
+# 
+# 
+# output <- MasterBuilderEmmet(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
+# fields::image.plot(F.x.grid.border, F.y.grid.border, output)
+# #pracma::interp2(F.x.grid.border, F.y.grid.border, t(output), 0.495, 0.495) # used to check the output is the same as MasterBuilderEmmet2(). It was the same!
+# 
+# MasterBuilderEmmet2(W.n.m, f.pos.matrix.0.border, F.x.grid.border, F.y.grid.border)
 
 
 
 ########################
 # Method 2
 # Propagate forwards samples from N(f.pos, C.pos) using F.h.forward
+
+GetTimeToLegoCity <- function(x.start, y.start, c=0.5){
+  d <- sqrt((0.495 - x.start)^2 + (0.495 - y.start)^2)
+  return(d/c)
+}
 
 GetF.h.forward <- function(t){
   F.h <- matrix(0, nrow=(N.cells)^2, ncol=(N.cells)^2) # matrix of Green's functions evaluations
@@ -404,21 +413,51 @@ GetF.h.forward.parallel <- function(t){
   return(F.h)
 }
 
-# This is a bad way of doing this... what if N.cells changes
-F.h.forward.0.55 <- GetF.h.forward(0.55227) # This function is horribly slow, but only needs to be done once
-F.h.forward.0.52 <- GetF.h.forward(0.55232) # This function is horribly slow, but only needs to be done once
-F.h.forward.0.58 <- GetF.h.forward(0.57983) # This function is horribly slow, but only needs to be done once
-
-F.h.forward.parallel.0.55 <- GetF.h.forward.parallel(0.55227) # This function is horribly slow, but only needs to be done once
-F.h.forward.parallel.0.52 <- GetF.h.forward.parallel(0.55232) # This function is horribly slow, but only needs to be done once
-F.h.forward.parallel.0.58 <- GetF.h.forward.parallel(0.57983) # This function is horribly slow, but only needs to be done once
-
+# only run these 3 lines once.
 KL.decomp <- SolveEigenProblem(C.pos) # this is very slow
-sample.count <- 15000
+saved.F.hs.times <- numeric()
+saved.F.hs <- list()
+
+CalculateF.hs <- function(pos.samples, saved.F.hs, saved.F.hs.times, parallel=FALSE){
+  for(i in 1:length(pos.samples)){
+    # Find the epicentre of the earthquake
+    centre.location.encoded <- which(pos.samples[[i]]==max(pos.samples[[i]]))
+    centre.location.decoded <- DecodeLocation2D(centre.location.encoded, N.cells)
+    centre.location.x <- F.x.grid[centre.location.decoded[1]]
+    centre.location.y <- F.y.grid[centre.location.decoded[2]]
+    
+    # Find the time the epicentre reaches Lego City
+    t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
+    
+    if(!(t %in% saved.F.hs.times)){
+      print(paste0("New time ", t))
+      
+      saved.F.hs.times <- c(saved.F.hs.times, t)
+      
+      if(parallel==FALSE){
+        saved.F.hs[[length(saved.F.hs.times)]] <- GetF.h.forward(t)
+      }else{
+        saved.F.hs[[length(saved.F.hs.times)]] <- GetF.h.forward.parallel(t)
+      }
+    }
+  }
+  
+  return(list("saved.F.hs"=saved.F.hs,
+              "saved.F.hs.times"=saved.F.hs.times))
+}
+
+
+
+
+sample.count <- 10000
 pos.samples <- GenerateSamples(sample.count, KL.decomp, f.base=f.pos.matrix)
 
+run.F.h.search <- CalculateF.hs(pos.samples, saved.F.hs, saved.F.hs.times, parallel=TRUE)
+saved.F.hs.times <- run.F.h.search$saved.F.hs.times
+saved.F.hs <- run.F.h.search$saved.F.hs
+
 lego.city.displacements <- numeric(sample.count)
-times <- numeric(sample.count)
+pb <- txtProgressBar(min = 0, max = sample.count, style = 3) # progress bar
 for(i in 1:sample.count){
   # Find the epicentre of the earthquake
   centre.location.encoded <- which(pos.samples[[i]]==max(pos.samples[[i]]))
@@ -428,28 +467,33 @@ for(i in 1:sample.count){
   
   # Find the time the epicentre reaches Lego City
   t <- GetTimeToLegoCity(centre.location.x, centre.location.y)
-  times[i] <- t
   
+  # find the location of the right F.h(t)
+  F.h.time <- which(saved.F.hs.times == t)
   
   # DO NOT USE F.h.forward HERE. THIS FUNCTION SHOULD BE SPECIFIC TO EACH SAMPLE
-  #u.lego.city.i <- matrix(F.h.forward %*% matrix(pos.samples[[i]], ncol=1), nrow=N.cells, byrow=TRUE)
+  u.lego.city.i <- matrix(saved.F.hs[[F.h.time]] %*% matrix(pos.samples[[i]], ncol=1), nrow=N.cells, byrow=TRUE)
   
   # interpolate the location for lego city
-  #lego.city.displacements[i] <- pracma::interp2(F.x.grid, F.y.grid, t(u.lego.city.i), 0.495, 0.495)
-}
-hist(lego.city.displacements, freq=FALSE)
-lines(seq(0, 0.2, length=200), dnorm(seq(0, 0.2, length=200), mean(lego.city.displacements), sd=sqrt(var(lego.city.displacements))), col="red")
-sum(lego.city.displacements >= 0.12)/sample.count # = probability of buildings collapsing
+  lego.city.displacements[i] <- pracma::interp2(F.x.grid, F.y.grid, t(u.lego.city.i), 0.495, 0.495)
 
-# This is used to investigate which times to use for F.h(t)
-#hist(times)
-#unique(times)
+  setTxtProgressBar(pb, i) # update progress bar
+}
+
+
+hist(lego.city.displacements, freq=FALSE)
+lines(seq(0, 0.2, length=200), dnorm(seq(0, 0.2, length=200), mean(lego.city.displacements), sd=sqrt(var(lego.city.displacements))), col="blue")
+abline(v=0.12, col="red")
+
+# probability of buildings collapsing
+sum(lego.city.displacements >= 0.12)/sample.count 
+
 
 
 
 ######################################
-# Approach number 3
-# This doesn't work, I don't know why. Stick with method 3
+# Method 3
+# This doesn't work, I don't know why. Stick with method 2
 
 # F.h.0.422 <- GetF.h(0.422)
 # u.0.1.method3.vector <- t(F.h.0.422) %*% p.eta.vector
