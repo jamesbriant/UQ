@@ -452,7 +452,7 @@ CalculateF.hs <- function(pos.samples, saved.F.hs, saved.F.hs.times, parallel=FA
 sample.count <- 10000
 pos.samples <- GenerateSamples(sample.count, KL.decomp, f.base=f.pos.matrix)
 
-run.F.h.search <- CalculateF.hs(pos.samples, saved.F.hs, saved.F.hs.times, parallel=TRUE)
+run.F.h.search <- CalculateF.hs(pos.samples, saved.F.hs, saved.F.hs.times, parallel=FALSE)
 saved.F.hs.times <- run.F.h.search$saved.F.hs.times
 saved.F.hs <- run.F.h.search$saved.F.hs
 
