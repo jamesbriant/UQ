@@ -484,6 +484,12 @@ for(i in 1:sample.count){
 hist(lego.city.displacements, freq=FALSE, main="Histogram of Maximum Lego Town Displacements from 10000 Samples", xlab="Maximum Displacement")
 lines(seq(0, 0.2, length=200), dnorm(seq(0, 0.2, length=200), mean(lego.city.displacements), sd=sqrt(var(lego.city.displacements))), col="blue")
 abline(v=0.12, col="red")
+displacements.ordered <- order(lego.city.displacements)
+lower.bound <- lego.city.displacements[displacements.ordered[250]]
+upper.bound <- lego.city.displacements[displacements.ordered[10000-250]]
+abline(v=lower.bound, col="green")
+abline(v=upper.bound, col="green")
+
 
 # probability of buildings collapsing
 sum(lego.city.displacements >= 0.12)/sample.count 
