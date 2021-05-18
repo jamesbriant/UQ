@@ -25,6 +25,9 @@ if(x.grid.size == 32){
   }
 }
 
+#fields::image.plot(x.grid, y.grid, p.eta, main="Raw Data")
+#points(0.495, 0.495, pch=15)
+
 # evaluates the basis functions/eigenfunctions
 v.n.m <- function(n, m, x, y, Lx=1, Ly=1){
   a <- 2/sqrt(Lx*Ly)
